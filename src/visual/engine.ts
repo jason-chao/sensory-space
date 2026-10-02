@@ -142,6 +142,7 @@ export class VisualEngine {
   private frame = 0;
   private touchBuf = new Float32Array(32);
   private noTouch = new Float32Array(32).fill(-1);
+  private thumb: Target | undefined;
   private touchCol = new Float32Array(24);
   /** internal render scale relative to the canvas backing size */
   scale = 1;
@@ -385,6 +386,56 @@ export class VisualEngine {
     gl.uniform1i(this.present.u.uImg, 1);
     gl.uniform2f(this.present.u.uOut, this.canvas.width, this.canvas.height);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  /** A small still of a scene in the current palette, for the scene picker.
+   *  Rendered through the scene shader only (no limiter), at a fixed moment. */
+  renderThumb(id: string, w = 96, h = 54): ImageData | null {
+    const gl = this.gl, sim = this.sim;
+    const p = this.sceneProg(id);
+    if (!p) return null;
+    if (!this.thumb || this.thumb.w !== w) { this.free(this.thumb); this.thumb = this.target(w, h, "byte"); }
+    const def = getScene(id);
+    const passes = def.feedback ? 40 : 1;
+    let tex = this.thumb.tex;
+    gl.bindVertexArray(this.quad);
+    for (let i = 0; i < passes; i++) {
+      const to = this.thumb;
+      gl.useProgram(p.prog);
+      gl.uniform2f(p.u.uRes, w, h);
+      gl.uniform1f(p.u.uT, 30 + i * 0.05);
+      gl.uniform1f(p.u.uTime, 30 + i * 0.05);
+      gl.uniform1f(p.u.uSeed, sim.visSeedA);
+      gl.uniform1f(p.u.uDensity, 0.5);
+      gl.uniform1f(p.u.uA, this.sim.store.num(`sc.${id}.a`));
+      gl.uniform1f(p.u.uB, 0.5);
+      gl.uniform1f(p.u.uBreath, 0.6);
+      gl.uniform3fv(p.u.uPal, sim.pal);
+      gl.uniform4fv(p.u.uTouch, this.noTouch);
+      gl.uniform1f(p.u.uDt, 0.05);
+      if (def.feedback) {
+        // ping-pong through the slot-2 feedback pair so trails can build up
+        let f = this.fb[2];
+        if (!f || f.t[0].w !== w || f.scene !== id) { f?.t.forEach((t) => this.free(t)); f = { t: [this.target(w, h, "byte"), this.target(w, h, "byte")], idx: 0, scene: id }; this.fb[2] = f; }
+        gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, f.t[f.idx].tex);
+        f.idx = 1 - f.idx;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, f.t[f.idx].fb);
+        tex = f.t[f.idx].tex;
+      } else {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, to.fb);
+      }
+      gl.uniform1i(p.u.uPrev, 3);
+      gl.viewport(0, 0, w, h);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    void tex;
+    const px = new Uint8ClampedArray(w * h * 4);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    // flip vertically: GL rows start at the bottom
+    const out = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) out.set(px.subarray(y * w * 4, (y + 1) * w * 4), (h - 1 - y) * w * 4);
+    for (let i = 3; i < out.length; i += 4) out[i] = 255;
+    return new ImageData(out, w, h);
   }
 
   /** a transition finished: the incoming scene's buffers move to the main slot */

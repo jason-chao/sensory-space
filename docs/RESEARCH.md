@@ -307,6 +307,21 @@ Four points came back from autistic users of the first version.
 
 **A technical change for the new scenes.** The water scene keeps a memory of its previous frame to draw trails. Such scenes replay approximately rather than exactly (D14); the owner accepted this.
 
+## 4c. Second round of user feedback (2026-10-02): organisation of the controls
+
+Autistic users with a strong sense of logic found the controls inconsistently organised. The redesign was also reviewed independently (Astra 6), whose main correction was adopted: the temporary "reduce everything" switch, the intensity presets and Stop are three different operations and must not be merged.
+
+| Feedback | Response |
+|---|---|
+| Text and symbols are mixed inconsistently. | One rule everywhere: stepper groups (Scene, Colours, Motion, Volume) are a caption plus conventional symbols and show their current value; actions (Ease, Stop, Settings, Hide) are a symbol plus a word; scenes are pictures, palettes are swatches, everything else is a plain label with its value. A symbols-only option exists. |
+| Why a Calm button that only slows down? Where is a two-way speed control? | "Calm" became "Ease": a reversible switch that makes everything dimmer, slower and quieter on top of the current settings, described as such. Motion speed and volume have two-way controls in the bar and on keys. |
+| Scenes can be switched from the bar, colours cannot. | Colours have the same previous and next controls. |
+| "Change over time" sat under Scenes although it governs colour too. | It is its own tab, "Changes". "Hold still" now stops colour rotation and automatic changes as well; the start delay counts from the start of the session and also delays colour rotation, as its label says. |
+| Scene buttons were text only. | Each scene has a live thumbnail rendered in the current palette. |
+| Sound controls were too many and too technical. | Named soundscapes come first, each with a factual description of what plays. Layers and fine control sit below, collapsed. Intensity presets show "Custom" after a manual change. |
+
+**Note on evidence.** Two informal feedback rounds from a few users are not a study. The rule "a caption plus symbols for steppers, a symbol plus a word for actions" is a consistent convention, not a finding about autistic adults in general; it should be tested with the same users.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.

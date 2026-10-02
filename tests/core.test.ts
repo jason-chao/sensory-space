@@ -95,7 +95,7 @@ describe("simulation", () => {
       for (let i = 0; i < 600; i++) {
         if (i === 100) w.store.set("scene", "ink");
         if (i === 200) w.store.set("v.speed", 0.9);
-        if (i === 300) w.store.set("calm", true);
+        if (i === 300) w.store.set("ease", true);
         w.sim.step();
       }
       return [w.sim.phase, w.sim.v("v.speed"), w.sim.sceneA, w.sim.mix, [...w.sim.pal]];
@@ -109,11 +109,11 @@ describe("simulation", () => {
     w.store.set("v.brightness", 1); w.sim.step();
     expect(Math.abs(w.sim.v("v.brightness") - before)).toBeLessThan(0.02);
   });
-  it("calm lowers brightness, speed and volume", () => {
+  it("ease lowers brightness, speed and volume", () => {
     const w = world();
     for (let i = 0; i < 300; i++) w.sim.step();
     const b = w.sim.v("v.brightness"), v = w.sim.v("a.volume");
-    w.store.set("calm", true);
+    w.store.set("ease", true);
     for (let i = 0; i < 900; i++) w.sim.step();
     expect(w.sim.v("v.brightness")).toBeLessThan(b * 0.6);
     expect(w.sim.v("a.volume")).toBeLessThan(v * 0.7);

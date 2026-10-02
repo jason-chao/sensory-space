@@ -1,18 +1,37 @@
 import { el } from "./dom";
+import { ICONS } from "./icons";
 import type { App } from "../main";
 import { SCENES, getScene } from "../visual/scenes";
-import { PALETTES, paletteCss } from "../visual/palettes";
+import { PALETTES, paletteCss, getPalette } from "../visual/palettes";
 import { VOICES, SCALES } from "../audio/voicelist";
 import { MODES, getMode } from "../signals/mapping";
-import { PROFILES } from "../core/params";
+import { PROFILES, SOUNDSCAPES } from "../core/params";
 
 const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const LS_SECTIONS = "sensory.sections";
 
-/** Builds the control surface. Every control writes to the store and redraws
- *  from the store, so replay and keyboard shortcuts keep the panel in step. */
-export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(msg: string): void; showStart(onStart: (fullscreen: boolean) => void): void } {
+export interface Ui {
+  refresh(): void;
+  toast(msg: string): void;
+  showStart(onStart: (fullscreen: boolean) => void): void;
+  /** called by the app when thumbnails may be stale */
+  thumbsStale(): void;
+}
+
+/** The control surface. Rules: every control sits under the concept it belongs to;
+ *  steppers are a caption plus conventional symbols; actions are a symbol plus a label;
+ *  scenes are pictures, palettes are swatches, everything else is a plain label with its value. */
+export function buildUi(app: App, root: HTMLElement): Ui {
   const { store } = app;
   const syncers: (() => void)[] = [];
+  const pct = (key: string, v: number) => { const d = store.defs.get(key)!; return String(Math.round(((v - d.min) / (d.max - d.min)) * 100)); };
+
+  const icon = (name: keyof typeof ICONS) => { const s = el("span", { class: "ic" }); s.innerHTML = ICONS[name]; return s; };
+  /** action button: symbol + label */
+  const action = (name: keyof typeof ICONS, label: string, attrs: Record<string, unknown>) =>
+    el("button", { class: "act", "aria-label": label, ...attrs }, icon(name), el("span", { class: "lbl" }, label));
+  /** symbol-only step button inside a captioned group */
+  const step = (name: keyof typeof ICONS, label: string, onclick: () => void) => el("button", { class: "stp", "aria-label": label, title: label, onclick }, icon(name));
 
   const slider = (key: string, fmt?: (v: number) => string) => {
     const def = store.defs.get(key)!;
@@ -24,86 +43,107 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
     const sync = () => {
       const v = store.num(key);
       input.value = String(v);
-      out.textContent = fmt ? fmt(v) : def.step && def.step >= 0.5 ? String(v) : `${Math.round(((v - def.min) / (def.max - def.min)) * 100)}`;
+      out.textContent = fmt ? fmt(v) : def.step && def.step >= 0.5 ? String(v) : pct(key, v);
     };
     syncers.push(sync); sync();
     return el("div", { class: "slider" }, el("label", {}, def.label, out), input);
   };
-
-  const choice = <T extends { id: string }>(key: string, items: T[], render: (item: T) => (Node | string)[], cls: string) => {
-    const buttons = items.map((it) => {
-      const b = el("button", { onclick: () => store.set(key, it.id) }, ...render(it));
-      syncers.push(() => b.classList.toggle("on", store.str(key) === it.id));
-      return b;
-    });
-    return el("div", { class: cls }, ...buttons);
-  };
-
   const toggle = (key: string, onLabel: string, offLabel: string) => {
     const b = el("button", { onclick: () => store.set(key, !store.bool(key)) });
     syncers.push(() => { b.classList.toggle("on", store.bool(key)); b.textContent = store.bool(key) ? onLabel : offLabel; b.setAttribute("aria-pressed", String(store.bool(key))); });
     return b;
   };
+  const choice = <T extends { id: string }>(key: string, items: T[], render: (item: T) => (Node | string)[], cls: string) => {
+    const buttons = items.map((it) => {
+      const b = el("button", { onclick: () => store.set(key, it.id) }, ...render(it));
+      syncers.push(() => { const on = store.str(key) === it.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+      return b;
+    });
+    return el("div", { class: cls }, ...buttons);
+  };
+  /** a collapsible section whose open state is remembered */
+  const openState: Record<string, boolean> = (() => { try { return JSON.parse(localStorage.getItem(LS_SECTIONS) || "{}"); } catch { return {}; } })();
+  const section = (id: string, title: string, ...children: (Node | string)[]) => {
+    const d = el("details", { open: openState[id] ?? true }, el("summary", {}, title), el("div", { class: "sec" }, ...children));
+    d.addEventListener("toggle", () => { openState[id] = d.open; try { localStorage.setItem(LS_SECTIONS, JSON.stringify(openState)); } catch { /* ignore */ } });
+    return d;
+  };
 
-  // --- pages ---------------------------------------------------------------
+  // ---------------------------------------------------------------- Picture
+  const thumbs = new Map<string, HTMLCanvasElement>();
+  const sceneGrid = el("div", { class: "scenes" }, ...SCENES.map((s) => {
+    const c = el("canvas", { width: 96, height: 54 });
+    thumbs.set(s.id, c);
+    const b = el("button", { class: "thumb", title: s.blurb, onclick: () => store.set("scene", s.id) }, c, el("span", {}, s.label));
+    syncers.push(() => { const on = store.str("scene") === s.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    return b;
+  }));
+  let thumbsDirty = true, thumbTimer = 0;
+  const drawThumbs = () => {
+    if (!thumbsDirty || !panel.classList.contains("open") || !pagePicture.classList.contains("on")) return;
+    thumbsDirty = false;
+    for (const [id, c] of thumbs) {
+      const img = app.engine.renderThumb(id, c.width, c.height);
+      if (img) c.getContext("2d")!.putImageData(img, 0, 0);
+    }
+  };
+  const thumbsStale = () => { thumbsDirty = true; window.clearTimeout(thumbTimer); thumbTimer = window.setTimeout(drawThumbs, 600); };
+
   const sceneParams = el("div");
-  const syncSceneParams = () => {
+  syncers.push(() => {
     const s = getScene(store.str("scene"));
     if (sceneParams.dataset.scene === s.id) return;
     sceneParams.dataset.scene = s.id;
-    sceneParams.replaceChildren();
+    sceneParams.replaceChildren(el("p", { class: "hint" }, s.blurb));
     if (s.a) sceneParams.append(slider(`sc.${s.id}.a`));
     if (s.b) sceneParams.append(slider(`sc.${s.id}.b`));
     if (s.id === "orb") sceneParams.append(slider("breath.rate", (v) => v.toFixed(1)));
-  };
-  syncers.push(syncSceneParams);
-
-  const pageScenes = el("div", { class: "page" },
-    el("h2", {}, "Change over time"),
-    slider("drift.minutes", (v) => (v ? `${v} min` : "never")),
-    slider("drift.colourMinutes", (v) => (v ? `${v} min` : "never")),
-    slider("drift.hue", (v) => (v < 0.01 ? "off" : String(Math.round(v * 100)))),
-    slider("drift.delay", (v) => (v ? `${v} min` : "at once")),
-    el("h2", {}, "Intensity"),
-    el("div", { class: "rowb" }, ...PROFILES.map((p) =>
-      el("button", { title: p.blurb, onclick: () => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); } }, p.label))),
-    el("h2", {}, "Scene"),
-    choice("scene", SCENES, (s) => [s.label, el("small", {}, s.blurb)], "grid"),
-    el("h2", {}, "This scene"), sceneParams,
+  });
+  const pagePicture = el("div", { class: "page" },
+    section("scene", "Scene", sceneGrid, sceneParams,
+      el("div", { class: "rowb" }, el("button", { onclick: () => app.newVariation() }, "New variation of this scene")),
+      el("p", { class: "hint" }, "Every pattern grows from a seed number. A new variation keeps all settings and changes the pattern.")),
+    section("colour", "Colour",
+      choice("palette", PALETTES, (p) => [el("i", { style: `background:${paletteCss(p)}` }), el("span", {}, p.label)], "chips"),
+      slider("v.hue"), slider("v.saturation")),
+    section("light", "Light and motion",
+      slider("v.brightness"), slider("v.speed"), slider("v.density"), slider("v.mask"),
+      el("div", { class: "rowb" }, toggle("freeze", "Holding still (press to move)", "Hold still"), toggle("v.blank", "Picture off (press for picture)", "Picture off")),
+      el("p", { class: "hint" }, "Hold still stops all movement, including colour rotation and automatic changes. Picture off keeps the sound.")),
   );
 
-  const pageLook = el("div", { class: "page" },
-    el("h2", {}, "Colours"),
-    choice("palette", PALETTES, (p) => [el("i", { style: `background:${paletteCss(p)}` }), el("span", {}, p.label)], "chips"),
-    slider("v.hue"),
-    slider("v.saturation"),
-    el("h2", {}, "Light and motion"),
-    slider("v.brightness"), slider("v.speed"), slider("v.density"), slider("v.mask"),
-    el("div", { class: "rowb" }, toggle("freeze", "Hold still", "Moving"), toggle("v.blank", "Sound only", "Picture on")),
-    el("h2", {}, "Variation"),
-    el("div", { class: "rowb" }, el("button", { onclick: () => app.newVariation() }, "New variation of this scene")),
-    el("p", { class: "hint" }, "Every pattern grows from a seed number. A new variation keeps your settings and changes the pattern."),
-  );
-
-  const muteBtn = el("button", { onclick: () => store.set("a.mute", !store.bool("a.mute")) }, "Mute");
-  syncers.push(() => { muteBtn.classList.toggle("on", store.bool("a.mute")); muteBtn.textContent = store.bool("a.mute") ? "Muted" : "Mute"; });
+  // ---------------------------------------------------------------- Sound
+  const scapeGrid = el("div", { class: "grid" }, ...SOUNDSCAPES.map((sc) => {
+    const b = el("button", { onclick: () => app.applySoundscape(sc.id) }, sc.label, el("small", {}, sc.blurb));
+    syncers.push(() => { const on = app.currentSoundscape() === sc.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    return b;
+  }));
+  const scapeState = el("p", { class: "hint" });
+  syncers.push(() => { scapeState.textContent = app.currentSoundscape() ? "" : "Custom mix (layers set by hand)"; });
   const scaleSel = el("select", { "aria-label": "Mood", onchange: () => store.set("a.scale", scaleSel.value) },
     ...Object.entries(SCALES).map(([id, s]) => el("option", { value: id }, s.label)));
   syncers.push(() => { scaleSel.value = store.str("a.scale"); });
   const pageSound = el("div", { class: "page" },
-    el("h2", {}, "Overall"),
-    slider("a.volume"), el("div", { class: "rowb" }, muteBtn),
-    slider("a.soften"), slider("a.reverb"),
-    el("h2", {}, "Layers"),
-    ...VOICES.map((v) => slider(`a.voice.${v.id}`, (x) => (x < 0.01 ? "off" : String(Math.round(x * 100))))),
-    el("h2", {}, "Music"),
-    el("div", { class: "slider" }, el("label", {}, "Mood"), scaleSel),
-    slider("a.root", (v) => NOTES[Math.round(v)]),
-    slider("a.tone"), slider("a.activity"), slider("a.pulseRate", (v) => String(Math.round(v))),
-    el("p", { class: "hint" }, "All sound is generated live in your browser. Set the room volume on your speakers first, then fine-tune here."),
+    section("scapes", "Soundscapes", scapeGrid, scapeState),
+    section("volume", "Volume", slider("a.volume"), el("div", { class: "rowb" }, toggle("a.mute", "Muted (press for sound)", "Mute")), slider("a.soften"),
+      el("p", { class: "hint" }, "All sound is generated live. Set the room volume on the speakers first; this volume is relative to that.")),
+    section("layers", "Layers", ...VOICES.map((v) => slider(`a.voice.${v.id}`, (x) => (x < 0.01 ? "off" : pct(`a.voice.${v.id}`, x))))),
+    section("fine", "Fine control",
+      el("div", { class: "slider" }, el("label", {}, "Mood (scale)"), scaleSel),
+      slider("a.root", (v) => NOTES[Math.round(v)]), slider("a.tone"), slider("a.activity"), slider("a.reverb"), slider("a.pulseRate", (v) => String(Math.round(v)))),
   );
 
-  // reactive
+  // ---------------------------------------------------------------- Changes
+  const pageChanges = el("div", { class: "page" },
+    section("changes", "Automatic changes",
+      el("p", { class: "hint" }, "Changes happen slowly, through cross-fades. Set an interval to zero to switch that change off."),
+      slider("drift.minutes", (v) => (v ? `${v} min` : "never")),
+      slider("drift.colourMinutes", (v) => (v ? `${v} min` : "never")),
+      slider("drift.hue", (v) => (v < 0.01 ? "off" : pct("drift.hue", v))),
+      slider("drift.delay", (v) => (v ? `${v} min` : "at once"))),
+  );
+
+  // ---------------------------------------------------------------- Input
   const bw = app.sources.eeg, demo = app.sources.demo;
   const urlInput = el("input", { type: "text", "aria-label": "Bridge address", spellcheck: "false", onchange: () => app.setBridgeUrl(urlInput.value.trim()) });
   urlInput.value = bw.url;
@@ -115,19 +155,40 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
     ...MODES.map((m) => el("option", { value: m.id }, m.label)));
   const modeHint = el("p", { class: "hint" });
   syncers.push(() => { modeSel.value = store.str("r.mode"); modeHint.textContent = getMode(store.str("r.mode")).description; });
-  const pageReact = el("div", { class: "page" },
-    el("h2", {}, "Input"),
-    el("div", { class: "rowb" }, bwBtn, demoBtn),
-    status,
-    el("details", {}, el("summary", { class: "hint" }, "Bridge address"), urlInput,
-      el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of a EEG bridge.")),
-    el("h2", {}, "Signals"), meters,
-    el("h2", {}, "How signals shape the space"),
-    modeSel, modeHint, slider("r.influence"),
-    el("p", { class: "hint" }, "Signals are an influence, not a score. There is nothing to achieve. With a weak or missing signal the space simply carries on. Sensory Space does not send or store signal data, unless you record a session with signals included. The bridge that supplies the signals is a separate system and may keep its own records."),
+  const pageInput = el("div", { class: "page" },
+    section("touch", "Touch", el("p", { class: "hint" }, "Touch or click the picture to make a bloom of light and a note. Left to right walks up the scale; the same place always gives the same note. Some scenes answer in their own way.")),
+    section("devices", "Devices", el("div", { class: "rowb" }, bwBtn, demoBtn), status,
+      el("details", {}, el("summary", { class: "hint" }, "Bridge address"), urlInput,
+        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of a EEG bridge."))),
+    section("signals", "Signals", meters),
+    section("mode", "How signals shape the space", modeSel, modeHint, slider("r.influence"),
+      el("p", { class: "hint" }, "Signals are an influence, not a score. There is nothing to achieve. With a weak or missing signal the space simply carries on. Sensory Space does not send or store signal data unless you record a session with signals included. The bridge that supplies the signals is a separate system and may keep its own records.")),
   );
 
-  // session
+  // ---------------------------------------------------------------- Setups
+  const profGrid = el("div", { class: "rowb" }, ...PROFILES.map((p) => {
+    const b = el("button", { title: p.blurb, onclick: () => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); } }, p.label);
+    syncers.push(() => { const on = app.currentProfile() === p.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    return b;
+  }));
+  const profState = el("p", { class: "hint" });
+  syncers.push(() => { profState.textContent = app.currentProfile() ? PROFILES.find((p) => p.id === app.currentProfile())!.blurb : "Custom (settings changed by hand)"; });
+  const presetSel = el("select", { "aria-label": "Saved setups" });
+  const fillPresets = () => presetSel.replaceChildren(el("option", { value: "" }, "Saved setups"), ...Object.keys(app.presets()).map((n) => el("option", { value: n }, n)));
+  fillPresets();
+  const pageSetups = el("div", { class: "page" },
+    section("intensity", "Intensity", profGrid, profState,
+      el("p", { class: "hint" }, "A preset sets brightness, motion speed, detail, colour strength, sound activity and tone. Volume is not changed.")),
+    section("saved", "Saved setups", presetSel,
+      el("div", { class: "rowb" },
+        el("button", { onclick: () => { if (presetSel.value) app.loadPreset(presetSel.value); } }, "Load"),
+        el("button", { onclick: () => { const n = prompt("Name for this setup"); if (n) { app.savePreset(n); fillPresets(); presetSel.value = n; } } }, "Save current"),
+        el("button", { onclick: () => { if (presetSel.value) { app.deletePreset(presetSel.value); fillPresets(); } } }, "Delete")),
+      el("div", { class: "rowb" }, el("button", { onclick: () => app.resetDefaults() }, "Reset everything to defaults"))),
+    section("display", "Display", el("div", { class: "rowb" }, toggle("ui.iconsOnly", "Bar shows symbols only", "Bar shows symbols and words"))),
+  );
+
+  // ---------------------------------------------------------------- Recording
   const recBtn = el("button", { onclick: () => app.toggleRecording() });
   const incl = el("input", { type: "checkbox", checked: true, onchange: () => { app.recorder.includeSignals = incl.checked; } });
   const fileInput = el("input", { type: "file", accept: ".json,application/json", style: "display:none", onchange: () => {
@@ -137,63 +198,76 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
   } });
   const playBtn = el("button", { onclick: () => (app.player.active ? app.stopReplay() : fileInput.click()) });
   const sessionStatus = el("div", { class: "status" });
-  const presetSel = el("select", { "aria-label": "Saved presets" });
-  const fillPresets = () => {
-    presetSel.replaceChildren(el("option", { value: "" }, "Saved presets"), ...Object.keys(app.presets()).map((n) => el("option", { value: n }, n)));
-  };
-  fillPresets();
-  const pageSession = el("div", { class: "page" },
-    el("h2", {}, "Record"),
-    el("p", { class: "hint" }, "Recording is off unless you start it. A recording is a small file of settings and changes, saved to this device when you stop. Sensory Space can replay it later, regenerating the same visuals and sound."),
-    el("label", { class: "check" }, incl, "Include the input signals that shaped the session"),
-    el("div", { class: "rowb" }, recBtn),
-    el("h2", {}, "Replay"),
-    el("div", { class: "rowb" }, playBtn, fileInput),
-    sessionStatus,
-    el("h2", {}, "Presets"),
-    presetSel,
-    el("div", { class: "rowb" },
-      el("button", { onclick: () => { if (presetSel.value) app.loadPreset(presetSel.value); } }, "Load"),
-      el("button", { onclick: () => { const n = prompt("Name for this preset"); if (n) { app.savePreset(n); fillPresets(); presetSel.value = n; } } }, "Save current"),
-      el("button", { onclick: () => { if (presetSel.value) { app.deletePreset(presetSel.value); fillPresets(); } } }, "Delete")),
-    el("h2", {}, "Keys"),
-    el("p", { class: "hint" },
-      el("kbd", {}, "Space"), " calm  ", el("kbd", {}, "←"), " ", el("kbd", {}, "→"), " scene  ", el("kbd", {}, "↑"), " ", el("kbd", {}, "↓"), " volume  ",
-      el("kbd", {}, "F"), " full screen  ", el("kbd", {}, "M"), " mute  ", el("kbd", {}, "S"), " settings  ", el("kbd", {}, "X"), " stop at once  ", el("kbd", {}, "P"), " hold still  ", el("kbd", {}, "B"), " sound only  ", el("kbd", {}, "H"), " hide or show controls"),
-    el("p", { class: "hint" }, "Touch or click the picture to make a bloom of light and a note. The same place always gives the same note."),
-    el("h2", {}, "About"),
-    el("p", { class: "hint" }, "Sensory Space is for relaxation and enjoyment. It is not a medical device and not a treatment. Brightness changes are rate-limited by design, but if you are sensitive to light or pattern, start with the Gentle profile and a dim room light on."),
+  const pageRecording = el("div", { class: "page" },
+    section("record", "Record",
+      el("p", { class: "hint" }, "Recording is off unless you start it. A recording is a small file of settings and changes, saved to this device when you stop. Sensory Space can replay it later, regenerating the same visuals and sound."),
+      el("label", { class: "check" }, incl, "Include the input signals that shaped the session"),
+      el("div", { class: "rowb" }, recBtn)),
+    section("replay", "Replay", el("div", { class: "rowb" }, playBtn, fileInput), sessionStatus),
   );
 
-  const pages = [pageScenes, pageLook, pageSound, pageReact, pageSession];
-  const names = ["Scenes", "Colour", "Sound", "Reactive", "Session"];
-  const tabBtns = names.map((n, i) => el("button", { onclick: () => show(i) }, n));
-  const show = (i: number) => { pages.forEach((p, j) => p.classList.toggle("on", i === j)); tabBtns.forEach((b, j) => b.classList.toggle("on", i === j)); };
-  show(0);
-  const panel = el("aside", { class: "panel", "aria-label": "Settings" }, el("div", { class: "tabs" }, ...tabBtns), el("div", { class: "pages" }, ...pages));
+  // ---------------------------------------------------------------- Help
+  const key = (k: string, what: string) => el("tr", {}, el("td", {}, el("kbd", {}, k)), el("td", {}, what));
+  const pageHelp = el("div", { class: "page" },
+    section("keys", "Keys", el("table", { class: "keys" },
+      key("← →", "previous or next scene"), key("C V", "next or previous colours"), key("+ −", "motion faster or slower"),
+      key("↑ ↓", "volume up or down"), key("E", "ease on or off"), key("X", "stop at once, or resume"), key("M", "mute"),
+      key("P", "hold still"), key("B", "picture off"), key("F", "full screen"), key("S", "settings"), key("H", "hide or show the bar"))),
+    section("about", "About", el("p", { class: "hint" }, "Sensory Space is for relaxation and enjoyment. It is not a medical device and not a treatment. Brightness changes are rate-limited by design, which lowers risk but cannot remove it. If you are sensitive to light or pattern, start with the Gentle intensity and a dim room light on.")),
+  );
 
-  // --- bar -----------------------------------------------------------------
-  const calmBtn = el("button", { title: "Calm: dim, slow and quiet (Space)", onclick: () => app.toggleCalm() }, "Calm");
-  syncers.push(() => calmBtn.classList.toggle("on", store.bool("calm")));
+  // ---------------------------------------------------------------- panel and tabs
+  const pages = [pagePicture, pageSound, pageChanges, pageInput, pageSetups, pageRecording, pageHelp];
+  const names = ["Picture", "Sound", "Changes", "Input", "Setups", "Recording", "Help"];
+  const tabBtns = names.map((n, i) => el("button", { role: "tab", onclick: () => show(i) }, n));
+  const show = (i: number) => {
+    pages.forEach((p, j) => p.classList.toggle("on", i === j));
+    tabBtns.forEach((b, j) => { b.classList.toggle("on", i === j); b.setAttribute("aria-selected", String(i === j)); });
+    try { localStorage.setItem("sensory.tab", String(i)); } catch { /* ignore */ }
+    if (i === 0) drawThumbs();
+  };
+  const panel = el("aside", { class: "panel", "aria-label": "Settings" },
+    el("div", { class: "phead" }, el("strong", {}, "Settings"),
+      action("stop", "Stop", { title: "Black and silent at once (X)", onclick: () => app.toggleStop() }),
+      action("close", "Close", { onclick: () => app.togglePanel() })),
+    el("div", { class: "tabs", role: "tablist" }, ...tabBtns), el("div", { class: "pages" }, ...pages));
+  let savedTab = 0; try { savedTab = Number(localStorage.getItem("sensory.tab")) || 0; } catch { /* ignore */ }
+  show(savedTab);
+
+  // ---------------------------------------------------------------- bar
+  const group = (caption: string, prev: HTMLElement, value: HTMLElement, next: HTMLElement, cls = "") =>
+    el("div", { class: `grp ${cls}`, role: "group", "aria-label": caption }, el("div", { class: "cap" }, caption), el("div", { class: "row" }, prev, value, next));
+  const sceneName = el("span", { class: "val" }), palName = el("span", { class: "val" }), speedVal = el("span", { class: "val" }), volVal = el("span", { class: "val" });
+  syncers.push(() => {
+    sceneName.textContent = getScene(store.str("scene")).label;
+    palName.textContent = getPalette(store.str("palette")).label;
+    speedVal.textContent = pct("v.speed", store.num("v.speed"));
+    volVal.textContent = store.bool("a.mute") ? "muted" : pct("a.volume", store.num("a.volume"));
+    document.body.classList.toggle("icons-only", store.bool("ui.iconsOnly"));
+  });
+  const easeBtn = action("ease", "Ease", { title: "Dimmer, slower and quieter until pressed again (E)", onclick: () => app.toggleEase() });
+  syncers.push(() => { easeBtn.classList.toggle("on", store.bool("ease")); easeBtn.setAttribute("aria-pressed", String(store.bool("ease"))); });
   const recInd = el("span", { class: "rec" }, "● rec");
-  const panelBtn = el("button", { title: "Settings (S)", onclick: () => app.togglePanel() }, "Settings");
-  const bar = el("div", { class: "bar", role: "toolbar" },
-    calmBtn,
-    el("button", { title: "Previous scene", "aria-label": "Previous scene", onclick: () => app.stepScene(-1) }, "‹"),
-    el("button", { title: "Next scene", "aria-label": "Next scene", onclick: () => app.stepScene(1) }, "›"),
-    el("button", { title: "Full screen (F)", onclick: () => app.toggleFullscreen() }, "Full screen"),
-    el("button", { title: "Stop: black and silent at once (X)", onclick: () => app.toggleStop() }, "Stop"),
-    recInd, panelBtn,
-    el("button", { title: "Hide these controls (H)", "aria-label": "Hide controls", onclick: () => app.toggleBar() }, "Hide"));
-  const handle = el("button", { class: "handle", title: "Show controls (H)", "aria-label": "Show controls", onclick: () => app.toggleBar() }, "≡");
+  const bar = el("div", { class: "bar", role: "toolbar", "aria-label": "Controls" },
+    group("Scene", step("prev", "Previous scene", () => app.stepScene(-1)), sceneName, step("next", "Next scene", () => app.stepScene(1))),
+    group("Colours", step("prev", "Previous colours", () => app.stepPalette(-1)), palName, step("next", "Next colours", () => app.stepPalette(1))),
+    group("Motion", step("minus", "Slower", () => app.nudge("v.speed", -0.1)), speedVal, step("plus", "Faster", () => app.nudge("v.speed", 0.1)), "narrow-hide"),
+    group("Volume", step("minus", "Quieter", () => app.nudge("a.volume", -0.05)), volVal, step("plus", "Louder", () => app.nudge("a.volume", 0.05)), "narrow-hide"),
+    el("div", { class: "acts" },
+      easeBtn,
+      action("stop", "Stop", { title: "Black and silent at once (X)", onclick: () => app.toggleStop() }),
+      action("settings", "Settings", { title: "Settings (S)", onclick: () => app.togglePanel() }),
+      action("hide", "Hide", { title: "Hide these controls (H)", onclick: () => app.toggleBar() })),
+    recInd);
+  const handle = el("button", { class: "handle", title: "Show controls (H)", "aria-label": "Show controls", onclick: () => app.toggleBar() });
+  handle.innerHTML = ICONS.show;
   const toastEl = el("div", { class: "toast", role: "status" });
   root.append(bar, handle, panel, toastEl);
   app.panelEl = panel;
 
+  // ---------------------------------------------------------------- live refresh
   let toastTimer = 0;
   const fmtT = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-
-  // live parts refreshed a few times a second
   const meterEls = new Map<string, { dot: HTMLElement; q: HTMLElement }>();
   const refreshLive = () => {
     bwBtn.textContent = bw.status === "off" ? "Connect EEG band" : "Disconnect EEG band";
@@ -228,11 +302,12 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
   refreshLive();
 
   const refresh = () => { for (const s of syncers) s(); };
-  store.onChange(() => refresh());
+  store.onChange((k) => { refresh(); if (k === "palette" || k === "v.hue" || k === "variation") thumbsStale(); });
   refresh();
+  new MutationObserver(() => { if (panel.classList.contains("open")) drawThumbs(); }).observe(panel, { attributes: true, attributeFilter: ["class"] });
 
   return {
-    refresh,
+    refresh, thumbsStale,
     toast(msg: string) {
       toastEl.textContent = msg; toastEl.classList.add("show");
       window.clearTimeout(toastTimer);
@@ -240,19 +315,16 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
     },
     showStart(onStart) {
       const fs = el("input", { type: "checkbox" });
-      const profBtns = PROFILES.map((p) => el("button", { onclick: () => { pick(p.id); } }, p.label));
       let chosen = "";
-      const pick = (id: string) => {
-        chosen = id;
-        profBtns.forEach((b, i) => b.classList.toggle("on", PROFILES[i].id === id));
-      };
+      const profBtns = PROFILES.map((p) => el("button", { onclick: () => pick(p.id) }, p.label, el("small", {}, p.blurb)));
+      const pick = (id: string) => { chosen = id; profBtns.forEach((b, i) => b.classList.toggle("on", PROFILES[i].id === id)); };
       const start = el("div", { class: "start" }, el("div", { class: "card" },
         el("h1", {}, "Sensory Space"),
         el("p", {}, "Slow light and sound to relax with. Everything can be changed, and nothing changes suddenly."),
         el("div", { class: "note" },
           "Set the room volume low on your speakers first: sound starts quietly and rises over a few seconds. Light changes are slowed by design, which lowers risk but cannot remove it. If you are sensitive to light or pattern, choose Gentle. Press ",
-          el("kbd", {}, "Space"), " for calm (dim, slow, quiet) or ", el("kbd", {}, "X"), " to stop at once (black and silent)."),
-        el("div", { class: "row" }, ...profBtns),
+          el("kbd", {}, "E"), " for ease (dimmer, slower, quieter) or ", el("kbd", {}, "X"), " to stop at once (black and silent)."),
+        el("div", { class: "row grid3" }, ...profBtns),
         el("div", { class: "row" }, el("label", {}, fs, "Open in full screen")),
         el("div", { class: "row" }, el("button", { class: "primary", onclick: () => {
           if (chosen) { const p = PROFILES.find((x) => x.id === chosen)!; for (const [k, v] of Object.entries(p.set)) store.set(k, v); }

@@ -69,6 +69,14 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Two Japanese scales and a plucked-string layer
 - Scenes may keep a memory of their previous frame (trails)
 
+## Done in version 0.3 (second user feedback: control organisation)
+
+- Bar: captioned stepper groups with current values (Scene, Colours, Motion, Volume) and symbol-plus-word actions (Ease, Stop, Settings, Hide); symbols-only option
+- "Calm" renamed "Ease" and described as a reversible reduction; two-way motion and volume controls
+- Settings regrouped by concept into seven tabs with remembered sections
+- Live scene thumbnails; named soundscapes; "Custom" shown after manual changes; reset to defaults
+- Clearer scopes: hold still freezes everything, start delay counts from the session start
+
 ## Next
 
 | Priority | Item |

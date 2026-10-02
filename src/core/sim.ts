@@ -8,7 +8,7 @@ import { SCENES } from "../visual/scenes";
 export const STEP = 1 / 60;
 const TRANSITION_S = 6;
 
-/** Multipliers applied while "calm" is on. */
+/** Multipliers applied while "ease" is on. */
 const CALM: Record<string, number> = {
   "v.brightness": 0.5, "v.speed": 0.4, "v.saturation": 0.7, "a.volume": 0.55, "a.activity": 0.4, "a.tone": 0.7,
 };
@@ -71,7 +71,7 @@ export class Sim {
     this.pal.set(getPalette(this.store.str("palette")).v);
     this.sceneA = this.store.str("scene"); this.sceneB = null; this.mix = 0; this.pending = null; this.pendingVar = false;
     this.visSeedA = this.visSeedB = this.visSeed();
-    this.calm = this.store.bool("calm") ? 1 : 0;
+    this.calm = this.store.bool("ease") ? 1 : 0;
     this.touches = []; this.freezeAmt = this.store.bool("freeze") ? 1 : 0; this.blank = this.store.bool("v.blank") ? 1 : 0;
     this.bus.reset();
   }
@@ -117,7 +117,7 @@ export class Sim {
     this.bus.tick(dt, this.t);
     modulation(this.store, this.bus, this.mod);
 
-    const calmTarget = this.store.bool("calm") ? 1 : 0;
+    const calmTarget = this.store.bool("ease") ? 1 : 0;
     this.calm += (calmTarget - this.calm) * (1 - Math.exp(-dt / 1.5));
 
     for (const def of this.store.defs.values()) {
@@ -140,7 +140,8 @@ export class Sim {
 
     const pt = getPalette(this.store.str("palette")).v;
     const hr = this.v("drift.hue");
-    this.hueDrift = (this.hueDrift + (dt * hr * hr * 0.5) / 60) % 1;   // at full setting one cycle takes two minutes
+    const changesOn = this.t >= this.store.num("drift.delay") * 60;
+    if (changesOn) this.hueDrift = (this.hueDrift + (dt * hr * hr * 0.5 * (1 - this.freezeAmt)) / 60) % 1;   // at full setting one cycle takes two minutes
     const hue = this.v("v.hue") + this.hueDrift;
     const k = 1 - Math.exp(-dt / 2.5);
     for (let i = 0; i < 12; i++) {
@@ -159,8 +160,7 @@ export class Sim {
       }
     }
 
-    const delay = this.store.num("drift.delay") * 60;
-    if (this.driftEnabled && this.t >= delay) {
+    if (this.driftEnabled && changesOn && !this.store.bool("freeze")) {
       const driftMin = this.store.num("drift.minutes");
       if (driftMin > 0 && this.t - this.lastSceneT > driftMin * 60) {
         const others = SCENES.filter((x) => x.id !== this.store.str("scene"));

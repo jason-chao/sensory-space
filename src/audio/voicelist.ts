@@ -7,11 +7,11 @@ export interface VoiceInfo {
 
 /** All sound is synthesised in the browser; no recordings are shipped. */
 export const VOICES: VoiceInfo[] = [
-  { id: "drone", label: "Warm drone", blurb: "A slow, sustained chord", def: 0.5 },
-  { id: "chimes", label: "Chimes", blurb: "Sparse soft bells", def: 0.4 },
+  { id: "drone", label: "Warm drone", blurb: "A slow, sustained chord", def: 0.4 },
+  { id: "chimes", label: "Chimes", blurb: "Sparse soft bells", def: 0.2 },
   { id: "bowls", label: "Singing bowls", blurb: "Long shimmering tones", def: 0 },
   { id: "koto", label: "Plucked strings", blurb: "Short phrases on a koto-like string", def: 0 },
-  { id: "ocean", label: "Ocean", blurb: "Waves arriving and leaving", def: 0.3 },
+  { id: "ocean", label: "Ocean", blurb: "Waves arriving and leaving", def: 0.5 },
   { id: "rain", label: "Rain", blurb: "Steady rain with soft drops", def: 0 },
   { id: "wind", label: "Wind", blurb: "Air moving through trees", def: 0 },
   { id: "stream", label: "Stream", blurb: "Water over stones", def: 0 },

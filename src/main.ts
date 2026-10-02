@@ -1,20 +1,22 @@
 import "./ui/style.css";
 import { Store, type Value } from "./core/store";
-import { defineParams } from "./core/params";
+import { defineParams, PROFILES, SOUNDSCAPES } from "./core/params";
+import { VOICES } from "./audio/voicelist";
 import { Sim, STEP } from "./core/sim";
 import { newSeed } from "./core/prng";
 import { SignalBus } from "./signals/bus";
 import { EegBridgeSource, DemoSource, defaultBridgeUrl, type SignalSource } from "./signals/sources";
 import { VisualEngine } from "./visual/engine";
 import { SCENES } from "./visual/scenes";
+import { PALETTES } from "./visual/palettes";
 import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
-import { buildUi } from "./ui/panel";
+import { buildUi, type Ui } from "./ui/panel";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
-const TRANSIENT = new Set(["calm", "a.mute", "freeze", "v.blank", "touch", "variation"]);
+const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "variation"]);
 
 const ls = {
   get<T>(k: string, d: T): T { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
@@ -31,7 +33,7 @@ export class App {
   player: Player;
   sources: { eeg: EegBridgeSource; demo: DemoSource };
   panelEl: HTMLElement | null = null;
-  ui!: ReturnType<typeof buildUi>;
+  ui!: Ui;
   private started = false;
   stopped = false;
   private touchN = 0;
@@ -134,11 +136,16 @@ export class App {
       if (tag === "INPUT" && (e.target as HTMLInputElement).type === "text") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const k = e.key.toLowerCase();
-      if (k === " ") { e.preventDefault(); if (tag !== "BUTTON") this.toggleCalm(); }
-      else if (k === "arrowright" && tag !== "INPUT") this.stepScene(1);
-      else if (k === "arrowleft" && tag !== "INPUT") this.stepScene(-1);
-      else if (k === "arrowup" && tag !== "INPUT") { e.preventDefault(); this.store.set("a.volume", this.store.num("a.volume") + 0.05); }
-      else if (k === "arrowdown" && tag !== "INPUT") { e.preventDefault(); this.store.set("a.volume", this.store.num("a.volume") - 0.05); }
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      if (k === "e") this.toggleEase();
+      else if (k === "arrowright") this.stepScene(1);
+      else if (k === "arrowleft") this.stepScene(-1);
+      else if (k === "arrowup") { e.preventDefault(); this.nudge("a.volume", 0.05); }
+      else if (k === "arrowdown") { e.preventDefault(); this.nudge("a.volume", -0.05); }
+      else if (k === "c") this.stepPalette(1);
+      else if (k === "v") this.stepPalette(-1);
+      else if (k === "+" || k === "=") this.nudge("v.speed", 0.1);
+      else if (k === "-" || k === "_") this.nudge("v.speed", -0.1);
       else if (k === "x" || k === "backspace") this.toggleStop();
       else if (k === "p") this.store.set("freeze", !this.store.bool("freeze"));
       else if (k === "b") this.store.set("v.blank", !this.store.bool("v.blank"));
@@ -162,10 +169,22 @@ export class App {
   }
 
   // --- actions -------------------------------------------------------------
-  toggleCalm(): void {
-    const on = !this.store.bool("calm");
-    this.store.set("calm", on);
-    this.ui.toast(on ? "Calm: dim, slow and quiet" : "Calm off");
+  /** Ease: temporarily dimmer, slower and quieter, on top of the current settings, until pressed again */
+  toggleEase(): void {
+    const on = !this.store.bool("ease");
+    this.store.set("ease", on);
+    this.ui.toast(on ? "Ease on: dimmer, slower and quieter" : "Ease off");
+  }
+  nudge(key: string, delta: number): void {
+    this.store.set(key, this.store.num(key) + delta);
+    const def = this.store.defs.get(key)!;
+    this.ui.toast(`${def.label}: ${Math.round(((this.store.num(key) - def.min) / (def.max - def.min)) * 100)}`);
+  }
+  stepPalette(d: number): void {
+    const i = PALETTES.findIndex((p) => p.id === this.store.str("palette"));
+    const next = PALETTES[(i + d + PALETTES.length) % PALETTES.length];
+    this.store.set("palette", next.id);
+    this.ui.toast(next.label);
   }
   /** Stop: black and silent at once. Overrides every setting, mapping and transition. */
   toggleStop(): void {
@@ -245,6 +264,30 @@ export class App {
     }
   }
   stopReplay(): void { this.player.stop(); this.ui.toast("Replay stopped"); }
+
+  /** which soundscape the layer levels currently match, if any */
+  currentSoundscape(): string | null {
+    for (const sc of SOUNDSCAPES) {
+      const ok = VOICES.every((v) => Math.abs(this.store.num(`a.voice.${v.id}`) - (sc.layers[v.id] ?? 0)) < 0.005);
+      if (ok && this.store.str("a.scale") === sc.scale) return sc.id;
+    }
+    return null;
+  }
+  applySoundscape(id: string): void {
+    const sc = SOUNDSCAPES.find((s) => s.id === id);
+    if (!sc) return;
+    for (const v of VOICES) this.store.set(`a.voice.${v.id}`, sc.layers[v.id] ?? 0);
+    this.store.set("a.scale", sc.scale);
+  }
+  currentProfile(): string | null {
+    for (const p of PROFILES) if (Object.entries(p.set).every(([k, v]) => Math.abs(this.store.num(k) - v) < 0.005)) return p.id;
+    return null;
+  }
+  resetDefaults(): void {
+    for (const d of this.store.defs.values()) this.store.set(d.key, d.def);
+    this.store.set("scene", "aurora"); this.store.set("palette", "spectrum"); this.store.set("a.scale", "pentaMinor"); this.store.set("r.mode", "gentle");
+    this.ui.toast("Everything is back to the defaults");
+  }
 
   presets(): Record<string, Record<string, Value>> { return ls.get(LS_PRESETS, {}); }
   savePreset(name: string): void { ls.set(LS_PRESETS, { ...this.presets(), [name]: this.store.snapshot() }); }

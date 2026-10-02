@@ -9,6 +9,7 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 - **20 scenes**: aurora, lava lamp, fireflies, pool light, ink in water, breathing orb, night sky, fractal garden, rain on a pond, bubbles, lanterns, kaleidoscope, silk threads, sea glass, colour wash, resonating lamps, flowers, water of light, brush strokes, light lattice.
 - **10 colour palettes**, with brightness, speed, detail, colour strength and an "island of light" mask.
 - **Change over time**: scenes and palettes change at intervals you set, with a slow colour rotation and an optional start delay. On by default, always through slow cross-fades.
+- **8 named soundscapes** such as Shore at dusk, Night garden and Temple bells, each described by what plays.
 - **11 sound layers**, all synthesised: drone, chimes, singing bowls, plucked strings, ocean, rain, wind, stream, brown noise, soft pulse, breath. Five scales, including two Japanese pentatonic scales.
 - **Touch**: touching or clicking the picture makes a bloom of light and a note. The same place gives the same note. Some scenes answer in their own way: lamps pass light to their neighbours, flowers scatter, water parts.
 - **Reactive input**: optional. The first supported device is an EEG band through a EEG bridge. Signals gently tint the space; nothing is scored.
@@ -17,16 +18,20 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 
 ## Controls
 
+The control bar has four stepper groups, each with a caption and its current value (Scene, Colours, Motion, Volume), and four actions with a symbol and a word (Ease, Stop, Settings, Hide). Settings are grouped by concept: Picture, Sound, Changes, Input, Setups, Recording, Help.
+
 | Key | Action |
 |---|---|
-| `Space` | Calm: dim, slow and quiet |
-| `X` | Stop at once: black and silent. Press again to resume |
 | `←` `→` | Previous or next scene |
-| `↑` `↓` | Volume |
-| `F` or double-click | Full screen |
+| `C` `V` | Next or previous colours |
+| `+` `−` | Motion faster or slower |
+| `↑` `↓` | Volume up or down |
+| `E` | Ease: dimmer, slower and quieter until pressed again |
+| `X` | Stop at once: black and silent. Press again to resume |
 | `M` | Mute |
-| `B` | Sound only |
 | `P` | Hold still |
+| `B` | Picture off |
+| `F` or double-click | Full screen |
 | `S` | Settings |
 | `H` | Hide or show the control bar |
 
