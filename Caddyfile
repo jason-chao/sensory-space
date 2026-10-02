@@ -5,6 +5,8 @@
 {
 	admin off
 	auto_https disable_redirects
+	# a browser that connects by IP address sends no server name; this picks the certificate for it
+	default_sni {$TLS_HOST:localhost}
 }
 
 (app) {
