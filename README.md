@@ -82,6 +82,12 @@ docker compose up -d --build
 
 The container serves plain http on `HTTP_PORT` and https on `HTTPS_PORT` with a self-signed certificate. Browsers will ask you to accept the certificate once. Use the https address when you want the screen to stay awake, offline install, or device access, since browsers allow those only on secure pages.
 
+To remove the certificate warning, and to allow offline install from this server, trust its root certificate on each viewing computer. Export it with:
+
+```bash
+docker exec sensory-space cat /data/caddy/pki/authorities/local/root.crt > sensory-space-root.crt
+```
+
 Keep real addresses in `.env`, which is not committed.
 
 For static hosting without a bridge (GitHub Pages, Cloudflare Pages), publish `dist/`. Set `BASE_PATH` at build time if the site lives under a sub-path.
