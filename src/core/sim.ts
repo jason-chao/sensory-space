@@ -139,9 +139,9 @@ export class Sim {
     this.breath = bp < 0.4 ? 0.5 - 0.5 * Math.cos((Math.PI * bp) / 0.4) : 0.5 + 0.5 * Math.cos((Math.PI * (bp - 0.4)) / 0.6);
 
     const pt = getPalette(this.store.str("palette")).v;
-    const hr = this.v("drift.hue");
+    const hueMin = this.store.num("drift.hueMinutes");
     const changesOn = this.t >= this.store.num("drift.delay") * 60;
-    if (changesOn) this.hueDrift = (this.hueDrift + (dt * hr * hr * 0.5 * (1 - this.freezeAmt)) / 60) % 1;   // at full setting one cycle takes two minutes
+    if (changesOn && hueMin > 0) this.hueDrift = (this.hueDrift + (dt * (1 - this.freezeAmt)) / (hueMin * 60)) % 1;
     const hue = this.v("v.hue") + this.hueDrift;
     const k = 1 - Math.exp(-dt / 2.5);
     for (let i = 0; i < 12; i++) {
