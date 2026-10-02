@@ -159,7 +159,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     section("touch", "Touch", el("p", { class: "hint" }, "Touch or click the picture to make a bloom of light and a note. Left to right walks up the scale; the same place always gives the same note. Some scenes answer in their own way.")),
     section("devices", "Devices", el("div", { class: "rowb" }, bwBtn, demoBtn), status,
       el("details", {}, el("summary", { class: "hint" }, "Bridge address"), urlInput,
-        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of a EEG bridge."))),
+        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of an EEG bridge that speaks the Sensory Space protocol (see docs/EEG-BRIDGE-PROTOCOL.md)."))),
     section("signals", "Signals", meters),
     section("mode", "How signals shape the space", modeSel, modeHint, slider("r.influence"),
       el("p", { class: "hint" }, "Signals are an influence, not a score. There is nothing to achieve. With a weak or missing signal the space simply carries on. Sensory Space does not send or store signal data unless you record a session with signals included. The bridge that supplies the signals is a separate system and may keep its own records.")),
@@ -270,7 +270,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   const fmtT = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
   const meterEls = new Map<string, { dot: HTMLElement; q: HTMLElement }>();
   const refreshLive = () => {
-    bwBtn.textContent = bw.status === "off" ? "Connect EEG band" : "Disconnect EEG band";
+    bwBtn.textContent = bw.status === "off" ? "Connect EEG bridge" : "Disconnect EEG bridge";
     bwBtn.classList.toggle("on", bw.status !== "off");
     demoBtn.textContent = demo.status === "off" ? "Try demo signals" : "Stop demo signals";
     demoBtn.classList.toggle("on", demo.status !== "off");

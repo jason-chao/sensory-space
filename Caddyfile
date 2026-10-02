@@ -12,9 +12,8 @@
 (app) {
 	encode zstd gzip
 
-	# read-only bridge surface: live stream, replay stream, health. Nothing else is exposed.
-	@bridge path /bridge/eeg/ws/live /bridge/eeg/ws/replay/* /bridge/eeg/api/health
-	handle @bridge {
+	# the EEG bridge (docs/EEG-BRIDGE-PROTOCOL.md), read-only: only GET and WebSocket upgrades pass
+	handle /bridge/eeg/* {
 		@notget not method GET
 		respond @notget 405
 		uri strip_prefix /bridge/eeg

@@ -29,7 +29,7 @@ Last updated: 2026-10-02.
 
 A second strand asked which browser technologies fit: rendering, audio, device connectivity, recording and replay, deployment, and automated testing.
 
-**How it was gathered.** Structured web searches in October 2026, giving priority to systematic reviews, meta-analyses, published standards (W3C, ITU, WHO) and regulator guidance over single studies and vendor material. The existing eeg project was read directly to establish what the EEG band and its bridge actually deliver.
+**How it was gathered.** Structured web searches in October 2026, giving priority to systematic reviews, meta-analyses, published standards (W3C, ITU, WHO) and regulator guidance over single studies and vendor material. The existing EEG bridge project was read directly to establish what the first EEG band and its bridge actually deliver.
 
 **Grading.** Each finding carries a grade:
 
@@ -237,6 +237,10 @@ Each decision lists its reason and where it is implemented.
 - A second mode, "Mirror", makes the link more visible for experimenting, under the same bounds. Further modes can be added as data.
 - The interface labels the calm value as an index and makes no claim about what it means.
 
+### D19. One open stream model for every device
+**Because** the first bridge was built around one device's own derived values, which other devices do not provide (section 4d), and because an open standard already exists for live physiological streams.
+**In practice**: the app accepts one protocol, documented in `EEG-BRIDGE-PROTOCOL.md`, which carries the stream model of Lab Streaming Layer (name, type, channel count, sample rate, channel labels, units, timestamps) over a WebSocket. The baseline every device can meet is one raw EEG stream. Band powers and signal quality are computed in the browser (`src/signals/eeg.ts`), so every device is treated alike. Devices that publish their own band powers, heart rate or motion can add those as further streams.
+
 ### D13. The app runs fully without any device
 **Because** many autistic people will not tolerate a headband (2.2), and public installations cannot assume hardware.
 **In practice**: everything works standalone. A demo source provides wandering signals so the reactive features can be tried without hardware.
@@ -322,6 +326,18 @@ Autistic users with a strong sense of logic found the controls inconsistently or
 
 **Note on evidence.** Two informal feedback rounds from a few users are not a study. The rule "a caption plus symbols for steppers, a symbol plus a word for actions" is a consistent convention, not a finding about autistic adults in general; it should be tested with the same users.
 
+## 4d. Third round of comments (2026-10-03): the EEG connection
+
+Before making the repository public, the owner asked for the EEG source to be renamed and generalised: the first adapter understood only one bridge's message format, built around one device's own derived values.
+
+| Comment | Response |
+|---|---|
+| Rename the source to "EEG bridge" and document the accepted format separately. | Done: `EEG-BRIDGE-PROTOCOL.md`. |
+| Other devices may not provide the attributes that one specific model provides; expect generic EEG data. | The protocol's minimum is a raw EEG stream. Band powers, artefact rejection and a quality estimate are computed in the browser (D19). Everything beyond raw EEG is optional. |
+| Base it on an open, existing standard where possible. | The protocol carries Lab Streaming Layer's stream model unchanged, so any device with an LSL connector can be relayed. |
+
+Compatibility with the first bridge's format was dropped by decision; that bridge will be updated to the protocol.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.
@@ -330,6 +346,7 @@ Autistic users with a strong sense of logic found the controls inconsistently or
 4. **Real projector conditions** (brightness, room darkness, viewing distance) are outside the software's control and untested.
 5. **Regulatory position** for sale to institutions has not been reviewed by a specialist.
 6. **Video export**, a two-window control mode for facilitators, more devices and more reactivity modes are designed for but not built.
+8. **The EEG path is not live again until a bridge speaks the new protocol.** The band analysis is tested on synthetic signals only, not yet on a real headset.
 7. **Session replay cannot yet jump to a chosen time.**
 
 ---

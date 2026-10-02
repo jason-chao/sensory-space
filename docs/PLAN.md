@@ -11,7 +11,7 @@ Last updated: 2026-10-02. Research, reasoning and sources are in [RESEARCH.md](R
 | R3 | Full screen on a projector with good speakers, or windowed on an ordinary computer | Built |
 | R4 | A variety of switchable visuals and colours | 20 scenes, 10 palettes, change over time |
 | R5 | A variety of sounds, generated live, free of copyright concerns | 11 synthesised layers, 5 scales |
-| R6 | First input: EEG band through the EEG bridge; input architecture kept open | Built: signal bus, source contract, mapping modes |
+| R6 | First input: an EEG band through a bridge; input architecture kept open | Built: open protocol based on Lab Streaming Layer, in-browser band analysis, signal bus, mapping modes |
 | R7 | Optional recording for later playback, off by default | Built as session files; video later |
 | R8 | A sensory space for everyone to relax and feel good | Ongoing: needs user feedback |
 
@@ -21,7 +21,7 @@ Last updated: 2026-10-02. Research, reasoning and sources are in [RESEARCH.md](R
 |---|---|
 | Audience | Mainly adults. Public installations and home first; other settings possible |
 | Operator | The person themself or a facilitator |
-| EEG route | Through the EEG bridge's WebSocket |
+| EEG route | Through a bridge speaking the EEG bridge protocol (docs/EEG-BRIDGE-PROTOCOL.md) |
 | Hosting | Internal deployment first. Public static hosting later. No deployment details in the repository |
 | EEG role | A gentle, unscored influence first. More modes may follow |
 | Recording | Session file first. Shareable video later |
@@ -78,10 +78,17 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Clearer scopes: hold still freezes everything, start delay counts from the session start
 - Automatic changes off by default; colour rotation set in minutes per cycle like the other two
 
+## Done in version 0.4 (open EEG protocol)
+
+- EEG bridge protocol based on Lab Streaming Layer's stream model
+- Generic EEG source: band powers and quality computed in the browser from raw EEG; optional band, quality, heart-rate and motion streams
+- No device-specific names in the repository
+
 ## Next
 
 | Priority | Item |
 |---|---|
+| 0 | Update the existing EEG bridge to the new protocol, then test the band analysis on a real headset |
 | 1 | Feedback sessions with autistic adults; adjust defaults, scenes and controls |
 | 2 | Verification with an external flash analyser on exported video |
 | 3 | Structured listening tests of the sound layers |

@@ -13,7 +13,7 @@ import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "variation"]);

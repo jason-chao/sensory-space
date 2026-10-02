@@ -1,4 +1,5 @@
 import { Baseline, type SignalBus, type SignalDesc } from "./bus";
+import { BandAnalyser, bandsFromLabels } from "./eeg";
 
 export type SourceStatus = "off" | "connecting" | "waiting" | "live" | "error";
 
@@ -15,7 +16,7 @@ export interface SignalSource {
 }
 
 export const BODY_SIGNALS: SignalDesc[] = [
-  { name: "eeg.calm", label: "Calm index", source: "", tau: 12, bio: true },
+  { name: "eeg.calm", label: "Calm index (slow vs fast waves)", source: "", tau: 12, bio: true },
   { name: "eeg.alpha", label: "Alpha share", source: "", tau: 15, bio: true },
   { name: "eeg.theta", label: "Theta share", source: "", tau: 15, bio: true },
   { name: "eeg.beta", label: "Beta share", source: "", tau: 15, bio: true },
@@ -53,27 +54,26 @@ export class DemoSource implements SignalSource {
   }
 }
 
-interface Frame {
+interface StreamInfo {
+  id: string;
+  name?: string;
   type: string;
-  ch?: {
-    calm?: { value: number };
-    bands?: { names: string[]; rel: number[] };
-    quality?: { verdict: string };
-    vitals?: { hr: number | null };
-    gyro?: { x: number; y: number; z: number };
-  };
-  bridge?: { state?: string };
-  stalled?: boolean;
-  status?: string;
-  message?: string;
+  channel_count: number;
+  nominal_srate: number;
+  channels?: { label?: string; unit?: string }[];
 }
+interface Hello { type: "hello"; protocol?: string; version?: number; streams?: StreamInfo[] }
+interface Samples { type: "samples"; stream: string; t?: number[]; t0?: number; dt?: number; x: number[][] }
+interface Status { type: "status"; state?: string; message?: string }
+type BridgeMsg = Hello | Samples | Status | { type: "error"; message?: string };
 
-/** EEG band through the EEG bridge's WebSocket.
- *  Only derived, slow measures are used; the raw EEG is never requested.
- *  Each measure is normalised against the wearer's own running baseline. */
+/** Any EEG device through a bridge that speaks docs/EEG-BRIDGE-PROTOCOL.md.
+ *  Raw EEG is turned into band powers and a quality estimate here, so devices
+ *  that provide only raw samples work the same as those with their own metrics.
+ *  Each measure is then normalised against the wearer's own running baseline. */
 export class EegBridgeSource implements SignalSource {
   readonly id = "eeg";
-  readonly label = "EEG band (EEG bridge)";
+  readonly label = "EEG bridge";
   status: SourceStatus = "off";
   detail = "";
   url = "";
@@ -81,17 +81,20 @@ export class EegBridgeSource implements SignalSource {
   private hb = 0;
   private retry = 1500;
   private wanted = false;
-  private quality = 0;
+  private streams = new Map<string, StreamInfo>();
+  private analysers = new Map<string, BandAnalyser>();
+  private lastAnalysis = 0;
+  private hasBandsStream = false;
+  private quality = 1;
   private base: Record<string, Baseline> = {};
-  private lastGyro: [number, number, number] | null = null;
+  private lastMotion: number[] | null = null;
   private motion = 0;
 
   constructor(private bus: SignalBus, private now: () => number) {}
 
   connect(): void {
     this.wanted = true;
-    for (const d of BODY_SIGNALS) this.bus.declare({ ...d, source: this.id });
-    for (const d of BODY_SIGNALS) this.base[d.name] = new Baseline();
+    for (const d of BODY_SIGNALS) { this.bus.declare({ ...d, source: this.id }); this.base[d.name] = new Baseline(); }
     this.open();
   }
 
@@ -100,12 +103,13 @@ export class EegBridgeSource implements SignalSource {
     window.clearInterval(this.hb);
     this.ws?.close(); this.ws = null;
     this.bus.removeSource(this.id);
+    this.streams.clear(); this.analysers.clear();
     this.status = "off"; this.detail = "";
   }
 
   private open(): void {
     if (!this.wanted) return;
-    this.status = "connecting"; this.detail = "Connecting";
+    this.status = "connecting"; this.detail = "Connecting to the bridge";
     let ws: WebSocket;
     try {
       ws = new WebSocket(this.url);
@@ -119,20 +123,17 @@ export class EegBridgeSource implements SignalSource {
     };
     ws.onopen = () => {
       this.retry = 1500;
-      this.status = "waiting"; this.detail = "Connected, waiting for the headset";
-      ws.send(JSON.stringify({ type: "subscribe", channels: ["calm", "bands", "quality", "vitals", "gyro"] }));
-      if (this.url.includes("/replay/")) ws.send(JSON.stringify({ type: "play" }));
+      this.status = "waiting"; this.detail = "Connected, waiting for the bridge to describe its streams";
       beat();
       this.hb = window.setInterval(beat, 5000);
     };
     ws.onmessage = (ev) => {
-      let m: Frame;
+      let m: BridgeMsg;
       try { m = JSON.parse(ev.data); } catch { return; }
-      if (m.type === "frame" && m.ch) this.onFrame(m.ch);
-      else if (m.type === "state" && this.status !== "live") {
-        const st = m.bridge?.state;
-        if (st) this.detail = `Connected. Headset link: ${st}`;
-      } else if (m.type === "error") { this.status = "error"; this.detail = m.message ?? "Error"; }
+      if (m.type === "hello") this.onHello(m);
+      else if (m.type === "samples") this.onSamples(m);
+      else if (m.type === "status") { if (m.message) this.detail = m.message; if (m.state === "error") this.status = "error"; }
+      else if (m.type === "error") { this.status = "error"; this.detail = m.message ?? "Bridge error"; }
     };
     ws.onclose = () => {
       window.clearInterval(this.hb);
@@ -144,42 +145,95 @@ export class EegBridgeSource implements SignalSource {
     ws.onerror = () => ws.close();
   }
 
-  private onFrame(ch: NonNullable<Frame["ch"]>): void {
+  private onHello(h: Hello): void {
+    if (h.protocol && h.protocol !== "sensory-space-eeg") { this.status = "error"; this.detail = `Unknown protocol "${h.protocol}"`; return; }
+    if (h.version && h.version > 1) { this.status = "error"; this.detail = `Protocol version ${h.version} is newer than this app understands`; return; }
+    this.streams.clear(); this.analysers.clear();
+    for (const s of h.streams ?? []) {
+      if (!s?.id || !s.type || !(s.channel_count > 0)) continue;
+      this.streams.set(s.id, s);
+    }
+    this.hasBandsStream = [...this.streams.values()].some((s) => s.type === "EEGBands");
+    const types = [...this.streams.values()].map((s) => s.type);
+    if (!types.includes("EEG") && !this.hasBandsStream) {
+      this.status = "waiting"; this.detail = "The bridge offers no EEG stream";
+    } else {
+      this.detail = `Streams: ${types.join(", ")}`;
+    }
+    const wanted = [...this.streams.values()].filter((s) => ["EEG", "EEGBands", "Quality", "HeartRate", "Accelerometer", "Gyroscope"].includes(s.type)).map((s) => s.id);
+    this.ws?.send(JSON.stringify({ type: "subscribe", streams: wanted }));
+  }
+
+  private onSamples(m: Samples): void {
+    const info = this.streams.get(m.stream);
+    if (!info || !Array.isArray(m.x) || !m.x.length) return;
     const t = this.now();
-    if (ch.quality) {
-      const v = ch.quality.verdict;
-      this.quality = v === "good" ? 1 : v === "adjust" ? 0.35 : 0;
-      this.status = "live";
-      this.detail = v === "good" ? "Good signal" : v === "adjust" ? "Weak contact: the scene leans less on the band" : "No skin contact: the scene carries on by itself";
-    }
     const push = (name: string, x: number, q: number) => this.bus.push(name, this.base[name].norm(x), q, t);
-    // poor contact produces meaningless values: they are neither used nor allowed to shift the baseline
-    if (this.quality > 0) {
-      if (ch.calm && Number.isFinite(ch.calm.value)) push("eeg.calm", ch.calm.value, this.quality);
-      if (ch.bands && ch.bands.rel?.length >= 6) {
-        const r = ch.bands.rel;
-        push("eeg.theta", r[1], this.quality);
-        push("eeg.alpha", r[2] + r[3], this.quality);
-        push("eeg.beta", r[4] + r[5], this.quality);
+    const last = m.x[m.x.length - 1];
+    switch (info.type) {
+      case "EEG": {
+        if (this.hasBandsStream) return;
+        let an = this.analysers.get(m.stream);
+        if (!an) {
+          const unit = (info.channels?.[0]?.unit ?? "").toLowerCase();
+          an = new BandAnalyser(info.channel_count, info.nominal_srate || 256, unit.startsWith("microvolt") || unit === "uv" || unit === "µv");
+          this.analysers.set(m.stream, an);
+        }
+        for (const s of m.x) an.push(s);
+        if (an.ready && t - this.lastAnalysis >= 1) {
+          this.lastAnalysis = t;
+          const r = an.analyse();
+          if (r) this.useBands(r.rel, r.quality);
+        }
+        break;
+      }
+      case "EEGBands": {
+        const labels = (info.channels ?? []).map((c) => c.label ?? "");
+        this.useBands(bandsFromLabels(labels, last), 1);
+        break;
+      }
+      case "Quality": {
+        let sum = 0, n = 0;
+        for (const v of last) if (Number.isFinite(v)) { sum += Math.min(1, Math.max(0, v)); n++; }
+        if (n) this.quality = sum / n;
+        break;
+      }
+      case "HeartRate": {
+        const hr = Number(last[0]);
+        if (hr > 30 && hr < 200) push("body.heart", hr, 1);
+        break;
+      }
+      case "Accelerometer":
+      case "Gyroscope": {
+        const v = Array.from(last, Number);
+        if (this.lastMotion && v.some((x) => x)) {
+          const d = Math.sqrt(v.reduce((acc, x, i) => acc + (x - this.lastMotion![i]) ** 2, 0));
+          this.motion += (Math.min(d, 60) - this.motion) * 0.3;
+          push("body.motion", this.motion, 1);
+        }
+        this.lastMotion = v;
+        break;
       }
     }
-    const hr = ch.vitals?.hr;
-    if (typeof hr === "number" && hr > 30 && hr < 200) push("body.heart", hr, 1);
-    if (ch.gyro) {
-      const g: [number, number, number] = [ch.gyro.x, ch.gyro.y, ch.gyro.z];
-      if (this.lastGyro && (g[0] || g[1] || g[2])) {
-        const d = Math.hypot(g[0] - this.lastGyro[0], g[1] - this.lastGyro[1], g[2] - this.lastGyro[2]);
-        this.motion += (Math.min(d, 60) - this.motion) * 0.3;
-        push("body.motion", this.motion, 1);
-      }
-      this.lastGyro = g;
-    }
+  }
+
+  /** derived EEG signals; `ownQuality` is the share of channels accepted this second */
+  private useBands(rel: Record<string, number>, ownQuality: number): void {
+    const q = ownQuality * this.quality;
+    this.status = "live";
+    this.detail = q > 0.6 ? "Good signal" : q > 0.15 ? "Weak signal: the scene leans less on the band" : "No usable signal: the scene carries on by itself";
+    if (q <= 0) return;   // nothing meaningful: neither used nor allowed to shift the baseline
+    const t = this.now();
+    const push = (name: string, x: number) => this.bus.push(name, this.base[name].norm(x), q, t);
+    const slow = rel.theta + rel.alpha, fast = rel.beta;
+    push("eeg.theta", rel.theta); push("eeg.alpha", rel.alpha); push("eeg.beta", rel.beta);
+    push("eeg.calm", slow + fast > 0 ? slow / (slow + fast) : 0.5);
   }
 }
 
-/** same-origin proxy path; a deployment maps this to the EEG bridge */
+/** same-origin proxy path; a deployment maps this to the bridge */
 export function defaultBridgeUrl(): string {
-  const u = new URL("bridge/eeg/ws/live", document.baseURI);
+  const u = new URL("bridge/eeg/ws", document.baseURI);
   u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
   return u.toString();
 }

@@ -12,7 +12,7 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 - **8 named soundscapes** such as Shore at dusk, Night garden and Temple bells, each described by what plays.
 - **11 sound layers**, all synthesised: drone, chimes, singing bowls, plucked strings, ocean, rain, wind, stream, brown noise, soft pulse, breath. Five scales, including two Japanese pentatonic scales.
 - **Touch**: touching or clicking the picture makes a bloom of light and a note. The same place gives the same note. Some scenes answer in their own way: lamps pass light to their neighbours, flowers scatter, water parts.
-- **Reactive input**: optional. The first supported device is an EEG band through a EEG bridge. Signals gently tint the space; nothing is scored.
+- **Reactive input**: optional. Any EEG device can take part through a bridge that speaks the [EEG bridge protocol](docs/EEG-BRIDGE-PROTOCOL.md), a WebSocket carrying Lab Streaming Layer stream descriptions. Raw EEG is analysed in the browser. Signals gently tint the space; nothing is scored.
 - **Session recording**: optional and off by default. A small file that the app can replay later.
 - **Works offline** once loaded, and can be installed as an app.
 
@@ -68,9 +68,11 @@ node scripts/shots.mjs shots  # a screenshot of every scene
 
 The browser checks use Playwright (`npx playwright install chromium` once).
 
-## Connecting an EEG band
+## Connecting an EEG device
 
-The app expects a EEG bridge to be reachable under `/bridge/eeg` on the same origin as the page. Serving both from one origin means a page loaded over https reaches the bridge over wss with no browser exception.
+A bridge program talks to the device and serves the [EEG bridge protocol](docs/EEG-BRIDGE-PROTOCOL.md). The minimum is one raw EEG stream; band powers and signal quality are computed in the browser. Devices with a Lab Streaming Layer connector can be relayed directly, since the protocol carries LSL's stream model.
+
+The app expects the bridge under `/bridge/eeg` on the same origin as the page. Serving both from one origin means a page loaded over https reaches the bridge over wss with no browser exception.
 
 - **Development**: copy `.env.example` to `.env.local`, set `EEG_BRIDGE_UPSTREAM`, and run `npm run dev`. The dev server forwards the path.
 - **Deployment**: see below. The bundled server forwards the path.
@@ -103,7 +105,7 @@ For static hosting without a bridge (GitHub Pages, Cloudflare Pages), publish `d
 
 - **A scene**: add an entry to `src/visual/scenes.ts`. A scene is one GLSL function of position and time. It needs no safety code of its own.
 - **A sound layer**: add a factory in `src/audio/engine.ts` and an entry in `src/audio/voicelist.ts`.
-- **An input device**: implement `SignalSource` in `src/signals/sources.ts` and push normalised values to the bus.
+- **An input device**: write a bridge that speaks `docs/EEG-BRIDGE-PROTOCOL.md`, or implement `SignalSource` in `src/signals/sources.ts` for devices the browser can reach directly.
 - **A reactivity mode**: add a table of routes to `MODES` in `src/signals/mapping.ts`.
 
 ## Layout
