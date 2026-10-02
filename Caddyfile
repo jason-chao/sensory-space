@@ -1,0 +1,43 @@
+# Serves the built app and forwards a narrow set of bridge paths on the same origin.
+# Same origin means the browser needs no cross-origin or mixed-content exception:
+# a page loaded over https reaches the bridge over wss through this server.
+# All site-specific values come from the environment (see .env.example).
+{
+	admin off
+	auto_https disable_redirects
+}
+
+(app) {
+	encode zstd gzip
+
+	# read-only bridge surface: live stream, replay stream, health. Nothing else is exposed.
+	@bridge path /bridge/eeg/ws/live /bridge/eeg/ws/replay/* /bridge/eeg/api/health
+	handle @bridge {
+		@notget not method GET
+		respond @notget 405
+		uri strip_prefix /bridge/eeg
+		reverse_proxy {$EEG_BRIDGE_UPSTREAM:http://127.0.0.1:9}
+	}
+	handle /bridge/* {
+		respond "No such bridge" 404
+	}
+	handle {
+		root * /srv
+		header /sw.js Cache-Control "no-cache"
+		header /index.html Cache-Control "no-cache"
+		header / Cache-Control "no-cache"
+		file_server
+	}
+}
+
+http://:8080 {
+	import app
+}
+
+# Self-signed certificate from Caddy's internal authority. A secure context is what
+# enables the wake lock, offline install and device APIs. Replace with a real
+# certificate (or put a public proxy in front) for public hosting.
+{$TLS_SITE:https://localhost:8443} {
+	tls internal
+	import app
+}

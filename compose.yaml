@@ -1,0 +1,14 @@
+services:
+  sensory-space:
+    build: .
+    container_name: sensory-space
+    env_file: .env
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+      - "${HTTPS_PORT:-8443}:${HTTPS_PORT:-8443}"
+    volumes:
+      - caddy-data:/data        # keeps the internal certificate authority across rebuilds
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
