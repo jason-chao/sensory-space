@@ -139,7 +139,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       el("p", { class: "hint" }, "Changes happen slowly, through cross-fades. Set an interval to zero to switch that change off."),
       slider("drift.minutes", (v) => (v ? `${v} min` : "never")),
       slider("drift.colourMinutes", (v) => (v ? `${v} min` : "never")),
-      slider("drift.hue", (v) => (v < 0.01 ? "off" : pct("drift.hue", v))),
+      slider("drift.hueMinutes", (v) => (v ? `${v} min` : "never")),
       slider("drift.delay", (v) => (v ? `${v} min` : "at once"))),
   );
 
@@ -303,6 +303,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
 
   const refresh = () => { for (const s of syncers) s(); };
   store.onChange((k) => { refresh(); if (k === "palette" || k === "v.hue" || k === "variation") thumbsStale(); });
+  window.setInterval(() => { if (store.num("drift.hueMinutes") > 0) thumbsStale(); }, 20000);
   refresh();
   new MutationObserver(() => { if (panel.classList.contains("open")) drawThumbs(); }).observe(panel, { attributes: true, attributeFilter: ["class"] });
 

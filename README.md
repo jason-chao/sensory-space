@@ -8,7 +8,7 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 
 - **20 scenes**: aurora, lava lamp, fireflies, pool light, ink in water, breathing orb, night sky, fractal garden, rain on a pond, bubbles, lanterns, kaleidoscope, silk threads, sea glass, colour wash, resonating lamps, flowers, water of light, brush strokes, light lattice.
 - **10 colour palettes**, with brightness, speed, detail, colour strength and an "island of light" mask.
-- **Change over time**: scenes and palettes change at intervals you set, with a slow colour rotation and an optional start delay. On by default, always through slow cross-fades.
+- **Change over time**: optional. Set how many minutes between scenes, between palettes, and per full rotation of the colours, plus a delay before changes begin. Off by default; when on, every change is a slow cross-fade.
 - **8 named soundscapes** such as Shore at dusk, Night garden and Temple bells, each described by what plays.
 - **11 sound layers**, all synthesised: drone, chimes, singing bowls, plucked strings, ocean, rain, wind, stream, brown noise, soft pulse, breath. Five scales, including two Japanese pentatonic scales.
 - **Touch**: touching or clicking the picture makes a bloom of light and a note. The same place gives the same note. Some scenes answer in their own way: lamps pass light to their neighbours, flowers scatter, water parts.

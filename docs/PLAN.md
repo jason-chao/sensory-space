@@ -76,6 +76,7 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Settings regrouped by concept into seven tabs with remembered sections
 - Live scene thumbnails; named soundscapes; "Custom" shown after manual changes; reset to defaults
 - Clearer scopes: hold still freezes everything, start delay counts from the session start
+- Automatic changes off by default; colour rotation set in minutes per cycle like the other two
 
 ## Next
 
