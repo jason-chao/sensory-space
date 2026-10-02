@@ -6,10 +6,11 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 
 ## What it does
 
-- **15 scenes**: aurora, lava lamp, fireflies, pool light, ink in water, breathing orb, night sky, fractal garden, rain on a pond, bubbles, lanterns, kaleidoscope, silk threads, sea glass, colour wash.
+- **20 scenes**: aurora, lava lamp, fireflies, pool light, ink in water, breathing orb, night sky, fractal garden, rain on a pond, bubbles, lanterns, kaleidoscope, silk threads, sea glass, colour wash, resonating lamps, flowers, water of light, brush strokes, light lattice.
 - **10 colour palettes**, with brightness, speed, detail, colour strength and an "island of light" mask.
-- **10 sound layers**, all synthesised: drone, chimes, singing bowls, ocean, rain, wind, stream, brown noise, soft pulse, breath.
-- **Touch**: touching or clicking the picture makes a bloom of light and a note. The same place gives the same note.
+- **Change over time**: scenes and palettes change at intervals you set, with a slow colour rotation and an optional start delay. On by default, always through slow cross-fades.
+- **11 sound layers**, all synthesised: drone, chimes, singing bowls, plucked strings, ocean, rain, wind, stream, brown noise, soft pulse, breath. Five scales, including two Japanese pentatonic scales.
+- **Touch**: touching or clicking the picture makes a bloom of light and a note. The same place gives the same note. Some scenes answer in their own way: lamps pass light to their neighbours, flowers scatter, water parts.
 - **Reactive input**: optional. The first supported device is an EEG band through a EEG bridge. Signals gently tint the space; nothing is scored.
 - **Session recording**: optional and off by default. A small file that the app can replay later.
 - **Works offline** once loaded, and can be installed as an app.
@@ -27,8 +28,9 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 | `B` | Sound only |
 | `P` | Hold still |
 | `S` | Settings |
+| `H` | Hide or show the control bar |
 
-The controls and the pointer hide after a few seconds without movement.
+The controls and the pointer hide after a few seconds without input, and come back on a click, a key or a real mouse movement. `H` or the Hide button hides the bar until the small mark in the corner, or `H`, brings it back.
 
 ## Safety built in
 

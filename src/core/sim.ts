@@ -2,7 +2,7 @@ import type { Store } from "./store";
 import { mulberry32, subSeed, type Rand } from "./prng";
 import { SignalBus } from "../signals/bus";
 import { modulation } from "../signals/mapping";
-import { getPalette } from "../visual/palettes";
+import { getPalette, PALETTES } from "../visual/palettes";
 import { SCENES } from "../visual/scenes";
 
 export const STEP = 1 / 60;
@@ -41,14 +41,18 @@ export class Sim {
   private mod = new Map<string, number>();
   private acc = 0;
   private lastSceneT = 0;
+  private lastPaletteT = 0;
+  private hueDrift = 0;
   private rand: Rand = mulberry32(1);
   /** called before each step with the step's start time; used by replay */
   preStep: ((t: number) => void) | null = null;
+  onSceneSettled: (() => void) | null = null;
   driftEnabled = true;
 
   constructor(readonly store: Store, readonly bus: SignalBus) {
     store.onChange((key, value) => {
       if (key === "scene") this.requestScene(String(value));
+      if (key === "palette") this.lastPaletteT = this.t;
       if (key === "variation") this.requestVariation();
       if (key === "touch") {
         const [x, y] = String(value).split(",").map(Number);
@@ -61,7 +65,7 @@ export class Sim {
     this.seed = seed >>> 0;
     this.rand = mulberry32(subSeed(this.seed, "sim"));
     this.t = t0; this.phase = phase0; this.acc = 0;
-    this.breathPhase = 0; this.lastSceneT = t0;
+    this.breathPhase = 0; this.lastSceneT = t0; this.lastPaletteT = t0; this.hueDrift = 0;
     this.eff.clear();
     for (const def of this.store.defs.values()) this.eff.set(def.key, this.store.num(def.key));
     this.pal.set(getPalette(this.store.str("palette")).v);
@@ -135,7 +139,9 @@ export class Sim {
     this.breath = bp < 0.4 ? 0.5 - 0.5 * Math.cos((Math.PI * bp) / 0.4) : 0.5 + 0.5 * Math.cos((Math.PI * (bp - 0.4)) / 0.6);
 
     const pt = getPalette(this.store.str("palette")).v;
-    const hue = this.v("v.hue");
+    const hr = this.v("drift.hue");
+    this.hueDrift = (this.hueDrift + (dt * hr * hr * 0.5) / 60) % 1;   // at full setting one cycle takes two minutes
+    const hue = this.v("v.hue") + this.hueDrift;
     const k = 1 - Math.exp(-dt / 2.5);
     for (let i = 0; i < 12; i++) {
       const target = i >= 9 ? pt[i] + hue : pt[i];
@@ -146,16 +152,25 @@ export class Sim {
       this.mix += dt / TRANSITION_S;
       if (this.mix >= 1) {
         this.sceneA = this.sceneB; this.visSeedA = this.visSeedB; this.sceneB = null; this.mix = 0;
+        this.onSceneSettled?.();
         const next = this.pending && this.pending !== this.sceneA ? this.pending : this.pendingVar ? this.sceneA : null;
         if (next) { this.sceneB = next; this.visSeedB = this.visSeed(); }
         this.pending = null; this.pendingVar = false;
       }
     }
 
-    const driftMin = this.store.num("drift.minutes");
-    if (this.driftEnabled && driftMin > 0 && this.t - this.lastSceneT > driftMin * 60) {
-      const others = SCENES.filter((x) => x.id !== this.store.str("scene"));
-      this.store.set("scene", others[Math.floor(this.rand() * others.length)].id, "system");
+    const delay = this.store.num("drift.delay") * 60;
+    if (this.driftEnabled && this.t >= delay) {
+      const driftMin = this.store.num("drift.minutes");
+      if (driftMin > 0 && this.t - this.lastSceneT > driftMin * 60) {
+        const others = SCENES.filter((x) => x.id !== this.store.str("scene"));
+        this.store.set("scene", others[Math.floor(this.rand() * others.length)].id, "system");
+      }
+      const colMin = this.store.num("drift.colourMinutes");
+      if (colMin > 0 && this.t - this.lastPaletteT > colMin * 60) {
+        const others = PALETTES.filter((x) => x.id !== this.store.str("palette"));
+        this.store.set("palette", others[Math.floor(this.rand() * others.length)].id, "system");
+      }
     }
     this.t += dt;
   }

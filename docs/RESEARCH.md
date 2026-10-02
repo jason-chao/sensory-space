@@ -294,9 +294,22 @@ The plan was reviewed independently by a second AI model (Astra 6) before buildi
 
 ---
 
+## 4b. First round of user feedback (2026-10-02) and the response
+
+Four points came back from autistic users of the first version.
+
+| Feedback | Response | Note against the research |
+|---|---|---|
+| Hide the control bar when it is not needed, on demand, with a mouse or a touchscreen. Users also did not see the automatic hiding work. | A Hide button and the `H` key hide the bar until a faint corner mark or `H` brings it back. Automatic hiding now ignores the small jitter of a resting mouse and returns on a click, a key or a real movement. | Control over the interface itself is part of control over the space (D2). |
+| Make the soft spectrum palette the default. | Done for new installations. Saved choices on existing devices are left alone. | Palette evidence is weak (2.4), so a preference stated by users outweighs it. |
+| Let scenes and colours keep changing after some time. | A "Change over time" group: a new scene every N minutes, a new palette every N minutes, a slow continuous colour rotation, and an optional delay before changes begin. All on by default at the owner's decision, every change through a slow cross-fade. | This departs from the "predictability" default argued in 2.2. The research concerned sudden change; slow, expected drift at a chosen pace is a different thing, and users asked for it. Anyone who prefers a fixed scene sets the intervals to zero. |
+| Some users like the immersive digital-art exhibitions of a well-known Japanese collective. Can their visual and audio styles be transposed? | Five new scenes borrow ideas, not works: lamps that pass light and colour to their neighbours when touched; flowers that bud, open and scatter, with petals blown by a touch; water drawn as flowing lines of light that part around a touch; brush strokes drawn slowly in space; waves of colour through a deep lattice of points. Sound gains two Japanese pentatonic scales and a plucked-string layer. | Ideas and techniques are free to use; specific works, names and recordings are not, and none are reproduced. The exhibitions themselves can be dense and fast; these scenes stay slow and pass through the same limiter (D5). Two of the new scenes answer touch directly, which strengthens D8. |
+
+**A technical change for the new scenes.** The water scene keeps a memory of its previous frame to draw trails. Such scenes replay approximately rather than exactly (D14); the owner accepted this.
+
 ## 5. What is not yet known or not yet done
 
-1. **No autistic users have tried it.** This is the largest gap. Feedback sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.
+1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.
 2. **The limiter has not been run through a certified broadcast flash analyser**, only the project's own check.
 3. **Sound has not had structured listening tests**, particularly with people who have sound sensitivity.
 4. **Real projector conditions** (brightness, room darkness, viewing distance) are outside the software's control and untested.

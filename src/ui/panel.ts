@@ -59,13 +59,17 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
   syncers.push(syncSceneParams);
 
   const pageScenes = el("div", { class: "page" },
+    el("h2", {}, "Change over time"),
+    slider("drift.minutes", (v) => (v ? `${v} min` : "never")),
+    slider("drift.colourMinutes", (v) => (v ? `${v} min` : "never")),
+    slider("drift.hue", (v) => (v < 0.01 ? "off" : String(Math.round(v * 100)))),
+    slider("drift.delay", (v) => (v ? `${v} min` : "at once")),
     el("h2", {}, "Intensity"),
     el("div", { class: "rowb" }, ...PROFILES.map((p) =>
       el("button", { title: p.blurb, onclick: () => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); } }, p.label))),
     el("h2", {}, "Scene"),
     choice("scene", SCENES, (s) => [s.label, el("small", {}, s.blurb)], "grid"),
     el("h2", {}, "This scene"), sceneParams,
-    slider("drift.minutes", (v) => (v ? `${v} min` : "never")),
   );
 
   const pageLook = el("div", { class: "page" },
@@ -155,7 +159,7 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
     el("h2", {}, "Keys"),
     el("p", { class: "hint" },
       el("kbd", {}, "Space"), " calm  ", el("kbd", {}, "←"), " ", el("kbd", {}, "→"), " scene  ", el("kbd", {}, "↑"), " ", el("kbd", {}, "↓"), " volume  ",
-      el("kbd", {}, "F"), " full screen  ", el("kbd", {}, "M"), " mute  ", el("kbd", {}, "S"), " settings  ", el("kbd", {}, "X"), " stop at once  ", el("kbd", {}, "P"), " hold still  ", el("kbd", {}, "B"), " sound only"),
+      el("kbd", {}, "F"), " full screen  ", el("kbd", {}, "M"), " mute  ", el("kbd", {}, "S"), " settings  ", el("kbd", {}, "X"), " stop at once  ", el("kbd", {}, "P"), " hold still  ", el("kbd", {}, "B"), " sound only  ", el("kbd", {}, "H"), " hide or show controls"),
     el("p", { class: "hint" }, "Touch or click the picture to make a bloom of light and a note. The same place always gives the same note."),
     el("h2", {}, "About"),
     el("p", { class: "hint" }, "Sensory Space is for relaxation and enjoyment. It is not a medical device and not a treatment. Brightness changes are rate-limited by design, but if you are sensitive to light or pattern, start with the Gentle profile and a dim room light on."),
@@ -179,9 +183,11 @@ export function buildUi(app: App, root: HTMLElement): { refresh(): void; toast(m
     el("button", { title: "Next scene", "aria-label": "Next scene", onclick: () => app.stepScene(1) }, "›"),
     el("button", { title: "Full screen (F)", onclick: () => app.toggleFullscreen() }, "Full screen"),
     el("button", { title: "Stop: black and silent at once (X)", onclick: () => app.toggleStop() }, "Stop"),
-    recInd, panelBtn);
+    recInd, panelBtn,
+    el("button", { title: "Hide these controls (H)", "aria-label": "Hide controls", onclick: () => app.toggleBar() }, "Hide"));
+  const handle = el("button", { class: "handle", title: "Show controls (H)", "aria-label": "Show controls", onclick: () => app.toggleBar() }, "≡");
   const toastEl = el("div", { class: "toast", role: "status" });
-  root.append(bar, panel, toastEl);
+  root.append(bar, handle, panel, toastEl);
   app.panelEl = panel;
 
   let toastTimer = 0;

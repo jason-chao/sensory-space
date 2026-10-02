@@ -11,6 +11,10 @@ export interface SceneDef {
   blurb: string;
   a?: SceneParam;
   b?: SceneParam;
+  /** the scene reads its own previous frame as uPrev (trails, flow). Replay of such scenes is approximate. */
+  feedback?: boolean;
+  /** the scene answers touches itself, so the generic bloom is not drawn over it */
+  ownTouch?: boolean;
   /** GLSL defining: vec3 scene(vec2 p, float t) */
   glsl: string;
 }
@@ -26,8 +30,12 @@ uniform float uA;
 uniform float uB;
 uniform float uBreath;  // 0..1 breathing curve
 uniform vec3 uPal[4];
+uniform vec4 uTouch[8]; // x, y (same units as p), age in seconds, unused; age < 0 = empty
+uniform sampler2D uPrev; // previous frame of this scene (feedback scenes only)
+uniform float uDt;      // seconds since the previous frame
 out vec4 outColor;
 float asp;
+vec2 toUv(vec2 p){ return vec2(p.x/asp+.5,p.y+.5); }
 vec3 pal(float t){ return clamp(uPal[0]+uPal[1]*cos(6.28318*(uPal[2]*t+uPal[3])),0.,1.); }
 float h11(float n){ return fract(sin(n*127.1+3.3)*43758.5453); }
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
@@ -322,6 +330,155 @@ vec3 scene(vec2 p,float t){
   float n=fbm(p*(.4+1.2*uA)+vec2(t*.03,-t*.02)+uSeed);
   float g=p.y*.35+.5+.5*(n-.5);
   return pal(g*.6+t*.008)*(.5+.3*n)*(.5+.5*uDensity);
+}`,
+  },
+  {
+    id: "lamps", label: "Resonating lamps", blurb: "Touch a lamp: its colour and light travel to the others",
+    a: { label: "Ambient glow", def: 0.3 }, ownTouch: true,
+    glsl: `
+vec3 scene(vec2 p,float t){
+  vec3 c=vec3(.01,.008,.012);
+  for(int L=0;L<2;L++){
+    float fl=float(L); float sc=4.+fl*3.; vec2 off=vec2(fl*.5+uSeed,fl*.37);
+    vec2 q=p*sc+off; vec2 id=floor(q);
+    for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+      vec2 cid=id+vec2(x,y); vec2 h=h22(cid+fl*7.);
+      float present=smoothstep(h.x-.05,h.x+.05,.2+.5*uDensity);
+      vec2 lp=cid+.5+(h-.5)*.5; vec2 wp=(lp-off)/sc;
+      vec2 d=q-lp-vec2(.02*sin(t*.5+h.y*6.28),0.); d.y*=.6; float r=length(d);
+      float glow=0.;
+      for(int k=0;k<8;k++){
+        float age=uTouch[k].z; if(age<0.) continue;
+        float dist=length(wp-uTouch[k].xy); float xx=age-dist/.4; if(xx<0.) continue;
+        glow+=smoothstep(0.,.5,xx)*exp(-xx/3.)*smoothstep(2.5,0.,dist);
+      }
+      float amb=.12+.1*sin(t*.2+h.x*6.28)+.3*uA;
+      float lit=amb+glow*1.2;
+      vec3 col=mix(pal(.08+.05*h.y),pal(.3+.4*fract(h.x+glow*.1)),clamp(glow,0.,1.));
+      float body=smoothstep(.22,.1,r); float halo=exp(-r*r*5.)*.5;
+      c+=present*col*(body*lit*.8+halo*lit*.35)*(1.-.35*fl);
+    }
+  }
+  return c;
+}`,
+  },
+  {
+    id: "flowers", label: "Flowers", blurb: "Flowers bud, open and scatter in an endless cycle; a touch sends petals flying",
+    a: { label: "Flower size", def: 0.5 }, ownTouch: true,
+    glsl: `
+float petal(vec2 d,float R,float k,float rot){
+  float a=atan(d.y,d.x)+rot; float r=length(d);
+  float rr=R*(.55+.45*abs(cos(a*k*.5)));
+  return smoothstep(rr,rr*.6,r);
+}
+vec3 scene(vec2 p,float t){
+  vec3 c=pal(.6+.1*p.y)*.06;
+  float sc=2.+2.5*uDensity; vec2 q=p*sc+uSeed; vec2 id=floor(q);
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec2 cid=id+vec2(x,y); vec2 h=h22(cid);
+    float P=22.+20.*h.y; float tt=t/P+h.x; float cyc=floor(tt); float ph=fract(tt);
+    vec2 h2=h22(cid+cyc*3.7); vec2 ctr=cid+.5+(h2-.5)*.6; vec2 d=q-ctr;
+    float k=4.+floor(h2.x*4.);
+    float R=(.12+.25*h2.y)*(.5+uA)*smoothstep(0.,.25,ph)*(1.-smoothstep(.58,.66,ph));
+    if(R>.001){
+      float f=petal(d,R,k,t*.05*(h.x-.5));
+      float inner=smoothstep(R*.35,0.,length(d));
+      c+=pal(h2.x*.5+.1)*f*(.6+.3*(1.-length(d)/R))+pal(h2.x*.5+.35)*inner*.5;
+    }
+    float s=(ph-.6)/.3;
+    if(s>0.&&s<1.){
+      for(int i=0;i<6;i++){
+        float fi=float(i); float ang=fi*1.047+h2.x*6.28; vec2 dir=vec2(cos(ang),sin(ang));
+        vec2 pp=ctr+dir*(.15+.5*s)+vec2(.3*s*s*(h.x-.3),.25*s)+.05*sin(vec2(t*1.3+fi,t*1.1+fi*2.));
+        for(int kk=0;kk<8;kk++){
+          if(uTouch[kk].z<0.) continue;
+          vec2 dd=pp-(uTouch[kk].xy*sc+uSeed); float dist=length(dd);
+          pp+=dd/max(dist,.1)*.5*s*smoothstep(1.5,0.,dist)*exp(-uTouch[kk].z/3.);
+        }
+        vec2 e=q-pp; e=mat2(cos(ang),sin(ang),-sin(ang),cos(ang))*e; e.y*=2.2;
+        c+=pal(h2.x*.5+.1)*smoothstep(.07,.03,length(e))*(1.-s)*.8;
+      }
+    }
+  }
+  return c;
+}`,
+  },
+  {
+    id: "flow", label: "Water of light", blurb: "Lines of light flowing like water, parting around a touch",
+    a: { label: "Current", def: 0.5 }, feedback: true, ownTouch: true,
+    glsl: `
+vec2 field(vec2 p,float t){
+  float n1=fbm(p*1.3+vec2(0.,t*.03)+uSeed); float n2=fbm(p*1.3+vec2(5.,t*.03)+uSeed+9.);
+  vec2 v=vec2(n1-.5,n2-.5)*2.2+vec2(0.,-.25);
+  for(int k=0;k<8;k++){
+    if(uTouch[k].z<0.) continue;
+    vec2 d=p-uTouch[k].xy; float r=length(d);
+    v+=d/max(r,.05)*.7*smoothstep(.6,0.,r)*exp(-uTouch[k].z/4.);
+  }
+  return v*(.3+.9*uA);
+}
+vec3 scene(vec2 p,float t){
+  vec2 v=field(p,t);
+  vec3 prev=texture(uPrev,toUv(p-v*uDt*1.5)).rgb;
+  float n=8.+8.*uDensity; vec2 q=p*n; vec2 id=floor(q); float slice=floor(t*2.);
+  vec2 h=h22(id+slice*.37+uSeed);
+  float on=step(.92,h.x)*smoothstep(0.,.2,fract(t*2.));
+  float d=length(q-(id+.5+(h-.5)*.8));
+  vec3 c=prev*exp(-uDt*1.1)+pal(.3+.4*h.y+p.y*.2)*on*smoothstep(.14,0.,d)*1.4;
+  return max(c,pal(.6)*.03);
+}`,
+  },
+  {
+    id: "strokes", label: "Brush strokes", blurb: "Ink strokes drawn slowly in space, then fading",
+    a: { label: "Stroke weight", def: 0.5 },
+    glsl: `
+float segd(vec2 p,vec2 a,vec2 b,out float u){ vec2 ab=b-a; u=clamp(dot(p-a,ab)/max(dot(ab,ab),1e-6),0.,1.); return length(p-a-ab*u); }
+vec3 scene(vec2 p,float t){
+  vec3 c=pal(.6)*.05+.02*fbm(p*3.+uSeed);
+  for(int j=0;j<6;j++){
+    float fj=float(j); float w=clamp(uDensity*6.+2.-fj,0.,1.); if(w<=0.) break;
+    float P=14.+6.*h11(fj+uSeed); float tt=t/P+fj*.37; float cyc=floor(tt); float ph=fract(tt);
+    vec2 h=h22(vec2(fj,cyc+uSeed)); vec2 pt=vec2((h.x-.5)*asp*.9,(h.y-.5)*.6);
+    float ang=h21(vec2(cyc,fj))*6.28;
+    float reveal=smoothstep(0.,.55,ph)*10.; float fade=1.-smoothstep(.75,.95,ph);
+    float ink=0.;
+    for(int i=0;i<10;i++){
+      float fi=float(i); ang+=(vnoise(vec2(fi*.7+cyc*3.,fj*5.+uSeed))-.5)*1.6;
+      vec2 nx=pt+vec2(cos(ang),sin(ang))*.11*(.5+uA);
+      float vis=clamp(reveal-fi,0.,1.); if(vis<=0.) break;
+      float u; float d=segd(p,pt,mix(pt,nx,vis),u);
+      float th=.012+.025*sin((fi+u)/10.*3.14159)*(.5+uA);
+      ink=max(ink,smoothstep(th,th*.4,d)); pt=nx;
+    }
+    c=mix(c,pal(.1+.15*fj+.05*cyc),ink*(.7+.3*fbm(p*12.+fj))*fade*w*.9);
+  }
+  return c;
+}`,
+  },
+  {
+    id: "lattice", label: "Light lattice", blurb: "Waves of colour passing through a deep grid of points",
+    a: { label: "Wave speed", def: 0.4 }, ownTouch: true,
+    glsl: `
+vec3 scene(vec2 p,float t){
+  vec3 c=vec3(.004,.004,.01);
+  float n=3.5+3.*uDensity;
+  for(int L=0;L<5;L++){
+    float fl=float(L); float z=1.+fl*.6;
+    vec2 q=p*z*n+vec2(uSeed+fl*.5,fl*.3); vec2 id=floor(q); vec2 f=fract(q)-.5;
+    vec3 w3=vec3((id-vec2(uSeed+fl*.5,fl*.3))/n/z,fl*.4);
+    float wave=pow(.5+.5*sin(dot(w3,vec3(1.5,.9,2.))+t*.6*(.3+uA)),3.);
+    float wave2=pow(.5+.5*sin(dot(w3,vec3(-.8,1.6,1.))-t*.4*(.3+uA)),4.);
+    float tr=0.;
+    for(int k=0;k<8;k++){
+      if(uTouch[k].z<0.) continue;
+      float xx=uTouch[k].z*.5-length(w3.xy-uTouch[k].xy);
+      tr+=smoothstep(0.,.1,xx)*exp(-xx*3.);
+    }
+    float b=.05+wave*.6+wave2*.4+tr*1.2;
+    float d=length(f); float s=.06+.04*b; float pt=pow(s*s/(d*d+s*s),1.5);
+    c+=pt*b*mix(pal(.1+.3*wave+.04*fl),pal(.6+.3*wave2),wave2)*(1.-.15*fl)*.7;
+  }
+  return c;
 }`,
   },
 ];

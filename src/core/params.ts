@@ -28,11 +28,15 @@ export function defineParams(store: Store): void {
   for (const v of VOICES) d({ key: `a.voice.${v.id}`, label: v.label, min: 0, max: 1, def: v.def, tau: 1.2 });
 
   d({ key: "r.influence", label: "Influence", min: 0, max: 1, def: 0.35, tau: 2 });
-  d({ key: "drift.minutes", label: "Change scene every (minutes, 0 = never)", min: 0, max: 30, def: 0, step: 1, tau: 0.01 });
+  // change over time: on by default, always through slow cross-fades
+  d({ key: "drift.minutes", label: "New scene every (minutes, 0 = never)", min: 0, max: 60, def: 8, step: 1, tau: 0.01 });
+  d({ key: "drift.colourMinutes", label: "New palette every (minutes, 0 = never)", min: 0, max: 60, def: 5, step: 1, tau: 0.01 });
+  d({ key: "drift.hue", label: "Slow colour rotation", min: 0, max: 1, def: 0.3, tau: 2 });
+  d({ key: "drift.delay", label: "Start changing after (minutes)", min: 0, max: 60, def: 0, step: 1, tau: 0.01 });
 
   store.init("variation", 0);
   store.init("scene", "aurora");
-  store.init("palette", "aurora");
+  store.init("palette", "spectrum");
   store.init("a.scale", "pentaMajor");
   store.init("r.mode", "gentle");
   store.init("calm", false);

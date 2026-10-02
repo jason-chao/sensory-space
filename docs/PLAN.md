@@ -9,8 +9,8 @@ Last updated: 2026-10-02. Research, reasoning and sources are in [RESEARCH.md](R
 | R1 | Browser-based generative visuals and live-generated sound for relaxation and fascination, designed especially with autistic people in mind | Built |
 | R2 | Works alone, or reacts in real time to external devices | Built |
 | R3 | Full screen on a projector with good speakers, or windowed on an ordinary computer | Built |
-| R4 | A variety of switchable visuals and colours | 15 scenes, 10 palettes |
-| R5 | A variety of sounds, generated live, free of copyright concerns | 10 synthesised layers |
+| R4 | A variety of switchable visuals and colours | 20 scenes, 10 palettes, change over time |
+| R5 | A variety of sounds, generated live, free of copyright concerns | 11 synthesised layers, 5 scales |
 | R6 | First input: EEG band through the EEG bridge; input architecture kept open | Built: signal bus, source contract, mapping modes |
 | R7 | Optional recording for later playback, off by default | Built as session files; video later |
 | R8 | A sensory space for everyone to relax and feel good | Ongoing: needs user feedback |
@@ -60,6 +60,15 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Offline install, settings and presets saved on the device
 - Container with same-origin bridge forwarding over http and https
 
+## Done in version 0.2 (first user feedback)
+
+- Control bar hides on demand; automatic hiding ignores mouse jitter
+- Soft spectrum as the default palette
+- Scenes and palettes change over time, with colour rotation and a start delay
+- Five scenes inspired by immersive digital art: resonating lamps, flowers, water of light, brush strokes, light lattice
+- Two Japanese scales and a plucked-string layer
+- Scenes may keep a memory of their previous frame (trails)
+
 ## Next
 
 | Priority | Item |
@@ -71,6 +80,6 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 | 5 | Video export of a session |
 | 6 | More devices: heart-rate straps, MIDI controllers, switches, microphone, camera motion |
 | 7 | More reactivity modes, defined as data |
-| 8 | Larger interactive pieces: a loom of sustained threads; a slowly growing pond ecosystem; a saved personal gesture |
+| 8 | Larger interactive pieces: a loom of sustained threads; a slowly growing pond ecosystem; a saved personal gesture; koi leaving trails |
 | 9 | Seeking within a replay |
 | 10 | Optional public-domain nature recordings as extra sound layers |

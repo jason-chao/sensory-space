@@ -11,7 +11,7 @@ import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi } from "./ui/panel";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["calm", "a.mute", "freeze", "v.blank", "touch", "variation"]);
@@ -74,6 +74,7 @@ export class App {
       root.style.cssText = "position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center";
       return;
     }
+    this.sim.onSceneSettled = () => this.engine.promoteSlot();
     this.ui = buildUi(this, root);
     this.bindInput();
     if (this.test) return;
@@ -110,15 +111,23 @@ export class App {
   }
 
   private bindInput(): void {
-    let idleTimer = 0;
+    let idleTimer = 0, travel = 0, lastX = -1, lastY = -1;
     const wakeUi = () => {
       document.body.classList.remove("idle");
+      travel = 0;
       window.clearTimeout(idleTimer);
       idleTimer = window.setTimeout(() => {
         if (!this.panelEl?.classList.contains("open") && this.started) document.body.classList.add("idle");
       }, 4000);
     };
-    for (const ev of ["mousemove", "mousedown", "touchstart", "keydown"]) window.addEventListener(ev, wakeUi, { passive: true });
+    for (const ev of ["pointerdown", "keydown"]) window.addEventListener(ev, wakeUi, { passive: true });
+    // a resting mouse can jitter by a pixel or two; only real movement brings the controls back
+    window.addEventListener("mousemove", (e) => {
+      if (lastX >= 0) travel += Math.hypot(e.clientX - lastX, e.clientY - lastY);
+      lastX = e.clientX; lastY = e.clientY;
+      if (!document.body.classList.contains("idle")) { wakeUi(); return; }
+      if (travel > 60) wakeUi();
+    }, { passive: true });
     wakeUi();
     window.addEventListener("keydown", (e) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -135,7 +144,8 @@ export class App {
       else if (k === "b") this.store.set("v.blank", !this.store.bool("v.blank"));
       else if (k === "f") this.toggleFullscreen();
       else if (k === "m") this.store.set("a.mute", !this.store.bool("a.mute"));
-      else if (k === "s" || k === "h") this.togglePanel();
+      else if (k === "s") this.togglePanel();
+      else if (k === "h") this.toggleBar();
       else if (k === "escape") this.panelEl?.classList.remove("open");
     });
     const stage = document.getElementById("stage")!;
@@ -176,6 +186,11 @@ export class App {
     }
   }
   togglePanel(): void { this.panelEl?.classList.toggle("open"); }
+  /** hide the control bar until asked for again; keys keep working */
+  toggleBar(): void {
+    const hidden = document.body.classList.toggle("bar-hidden");
+    if (hidden) this.ui.toast("Controls hidden. Press H or the corner mark to show them");
+  }
   toggleFullscreen(): void {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen?.().catch(() => this.ui.toast("Full screen is not available here"));

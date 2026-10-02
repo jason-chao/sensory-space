@@ -42,6 +42,14 @@ button.primary { background: var(--accent); color: #06222a; border: none; font-w
 .bar .rec { color: #ff9a9a; display: none; align-items: center; padding: 0 8px; font-variant-numeric: tabular-nums; }
 .bar .rec.on { display: flex; }
 body.idle .bar, body.idle .panel:not(.open) { opacity: 0; pointer-events: none; }
+body.bar-hidden .bar { display: none; }
+.handle {
+  position: fixed; right: 10px; bottom: 10px; min-height: 36px; min-width: 36px; padding: 4px 10px; opacity: 0.22;
+  display: none; font-size: 1.1rem; line-height: 1; background: rgba(10, 12, 20, 0.5);
+}
+.handle:hover, .handle:focus-visible { opacity: 0.8; }
+body.bar-hidden .handle { display: block; }
+body.idle .handle { opacity: 0; }
 .stopped { position: fixed; inset: 0; background: #000; display: grid; place-items: center; z-index: 10; }
 .stopped button { opacity: 0.55; padding: 16px 40px; font-size: 1.1rem; }
 .toast {

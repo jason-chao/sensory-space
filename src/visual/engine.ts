@@ -36,7 +36,7 @@ void main(){
   // touches: a soft bloom that opens and fades where the space was touched
   for(int i=0;i<8;i++){
     float age=uTouch[i].z; if(age<0.) continue;
-    float d=length(p-vec2((uTouch[i].x-.5)*uAsp,uTouch[i].y-.5));
+    float d=length(p-uTouch[i].xy);
     float r=.04+.16*sqrt(age);
     float env=smoothstep(0.,.5,age)*exp(-age/2.8);
     c+=uTouchCol[i]*env*(exp(-d*d/(r*r))*.35+.25*exp(-abs(d-r)*30.));
@@ -132,6 +132,8 @@ export class VisualEngine {
   private present: SceneProg;
   private tA!: Target;
   private tB!: Target;
+  /** per slot: two buffers for scenes that read their previous frame, and the scene they belong to */
+  private fb: { t: Target[]; idx: number; scene: string }[] = [];
   private tMix!: Target;
   private tAlpha!: Target;
   private tAlphaMin!: Target;
@@ -139,6 +141,7 @@ export class VisualEngine {
   private outIdx = 0;
   private frame = 0;
   private touchBuf = new Float32Array(32);
+  private noTouch = new Float32Array(32).fill(-1);
   private touchCol = new Float32Array(24);
   /** internal render scale relative to the canvas backing size */
   scale = 1;
@@ -204,7 +207,7 @@ export class VisualEngine {
     if (!this.scenes.has(id)) {
       const def = getScene(id);
       this.scenes.set(id, this.program(COMMON + def.glsl + MAIN,
-        ["uRes", "uT", "uTime", "uSeed", "uDensity", "uA", "uB", "uBreath", "uPal"]));
+        ["uRes", "uT", "uTime", "uSeed", "uDensity", "uA", "uB", "uBreath", "uPal", "uTouch", "uPrev", "uDt"]));
     }
     return this.scenes.get(id) ?? null;
   }
@@ -266,13 +269,30 @@ export class VisualEngine {
     this.out = fresh; this.outIdx = 0;
   }
 
-  private drawScene(id: string, seed: number, to: Target): void {
+  /** draws a scene; returns the texture holding the result */
+  private drawScene(id: string, seed: number, to: Target, slot: number, dt: number): WebGLTexture {
     const gl = this.gl, sim = this.sim;
     const p = this.sceneProg(id);
+    let prevTex: WebGLTexture | null = null;
+    if (getScene(id).feedback) {
+      let f = this.fb[slot];
+      if (!f || f.t[0].w !== to.w || f.t[0].h !== to.h || f.scene !== id) {
+        f?.t.forEach((t) => this.free(t));
+        f = { t: [this.target(to.w, to.h, "byte"), this.target(to.w, to.h, "byte")], idx: 0, scene: id };
+        this.fb[slot] = f;
+      }
+      prevTex = f.t[f.idx].tex;
+      f.idx = 1 - f.idx;
+      to = f.t[f.idx];
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, to.fb);
     gl.viewport(0, 0, to.w, to.h);
-    if (!p) { gl.clear(gl.COLOR_BUFFER_BIT); return; }
+    if (!p) { gl.clear(gl.COLOR_BUFFER_BIT); return to.tex; }
     gl.useProgram(p.prog);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, prevTex);
+    gl.uniform1i(p.u.uPrev, 3);
+    gl.uniform1f(p.u.uDt, Math.min(dt, 0.1));
+    gl.uniform4fv(p.u.uTouch, this.touchBuf);
     gl.uniform2f(p.u.uRes, to.w, to.h);
     gl.uniform1f(p.u.uT, sim.phase);
     gl.uniform1f(p.u.uTime, sim.t);
@@ -283,6 +303,7 @@ export class VisualEngine {
     gl.uniform1f(p.u.uBreath, sim.breath);
     gl.uniform3fv(p.u.uPal, sim.pal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    return to.tex;
   }
 
   /** dt: seconds of simulation covered by this frame (bounds the limiter step) */
@@ -291,31 +312,35 @@ export class VisualEngine {
     this.resize();
     gl.bindVertexArray(this.quad);
 
-    this.drawScene(sim.sceneA, sim.visSeedA, this.tA);
+    const asp = this.tA.w / this.tA.h;
+    for (let i = 0; i < 8; i++) {
+      const tc = sim.touches[i];
+      this.touchBuf[i * 4 + 2] = -1;
+      if (!tc || sim.t - tc.t > 14) continue;
+      this.touchBuf.set([(tc.x - 0.5) * asp, tc.y - 0.5, sim.t - tc.t, 0], i * 4);
+      for (let k = 0; k < 3; k++) {
+        this.touchCol[i * 3 + k] = Math.min(1, Math.max(0, sim.pal[k] + sim.pal[3 + k] * Math.cos(6.28318 * (sim.pal[6 + k] * tc.x + sim.pal[9 + k]))));
+      }
+    }
+
+    const texA = this.drawScene(sim.sceneA, sim.visSeedA, this.tA, 0, dt);
     const mixing = sim.sceneB !== null;
-    if (mixing) this.drawScene(sim.sceneB!, sim.visSeedB, this.tB);
+    const texB = mixing ? this.drawScene(sim.sceneB!, sim.visSeedB, this.tB, 1, dt) : this.tB.tex;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.tMix.fb);
     gl.viewport(0, 0, this.tMix.w, this.tMix.h);
     gl.useProgram(this.composite.prog);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tA.tex);
-    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.tB.tex);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texA);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texB);
     gl.uniform1i(this.composite.u.uA, 0); gl.uniform1i(this.composite.u.uB, 1);
     const m = sim.mix;
     gl.uniform1f(this.composite.u.uMix, mixing ? m * m * (3 - 2 * m) : 0);
     gl.uniform1f(this.composite.u.uBright, (0.25 + 0.95 * sim.v("v.brightness")) * (1 - sim.blank));
     gl.uniform1f(this.composite.u.uMask, sim.v("v.mask"));
     gl.uniform1f(this.composite.u.uAsp, this.tMix.w / this.tMix.h);
-    for (let i = 0; i < 8; i++) {
-      const tc = sim.touches[i];
-      this.touchBuf[i * 4 + 2] = -1;
-      if (!tc || sim.t - tc.t > 14) continue;
-      this.touchBuf.set([tc.x, tc.y, sim.t - tc.t, 0], i * 4);
-      for (let k = 0; k < 3; k++) {
-        this.touchCol[i * 3 + k] = Math.min(1, Math.max(0, sim.pal[k] + sim.pal[3 + k] * Math.cos(6.28318 * (sim.pal[6 + k] * tc.x + sim.pal[9 + k]))));
-      }
-    }
-    gl.uniform4fv(this.composite.u.uTouch, this.touchBuf);
+    // scenes that answer touches themselves get no generic bloom on top
+    const own = getScene(sim.sceneA).ownTouch && (!mixing || getScene(sim.sceneB!).ownTouch);
+    gl.uniform4fv(this.composite.u.uTouch, own ? this.noTouch : this.touchBuf);
     gl.uniform3fv(this.composite.u.uTouchCol, this.touchCol);
     gl.uniform1f(this.composite.u.uSat, 0.15 + 1.0 * sim.v("v.saturation"));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -360,6 +385,13 @@ export class VisualEngine {
     gl.uniform1i(this.present.u.uImg, 1);
     gl.uniform2f(this.present.u.uOut, this.canvas.width, this.canvas.height);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  /** a transition finished: the incoming scene's buffers move to the main slot */
+  promoteSlot(): void {
+    this.fb[0]?.t.forEach((t) => this.free(t));
+    this.fb[0] = this.fb[1];
+    this.fb.length = 1;
   }
 
   /** forget what is on screen: the picture then fades in again from black */

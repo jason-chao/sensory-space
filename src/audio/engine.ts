@@ -157,6 +157,40 @@ const bowls: VoiceFactory = (v) => {
   };
 };
 
+/** A plucked string: bright at the pluck, darkening as it rings. Phrases of a few notes. */
+function pluck(v: VoiceCtx, when: number, f: number, gain: number, pan: number): void {
+  const { ctx } = v;
+  const o1 = ctx.createOscillator(); o1.type = "triangle"; o1.frequency.value = f;
+  const o2 = ctx.createOscillator(); o2.type = "sawtooth"; o2.frequency.value = f; o2.detune.value = 4;
+  const g2 = ctx.createGain(); g2.gain.value = 0.25;
+  const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 1;
+  lp.frequency.setValueAtTime(f * 6, when); lp.frequency.exponentialRampToValueAtTime(f * 1.5, when + 1.2);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0, when); env.gain.linearRampToValueAtTime(gain, when + 0.025);
+  env.gain.setTargetAtTime(0, when + 0.025, 0.5);
+  const p = ctx.createStereoPanner(); p.pan.value = pan;
+  o1.connect(lp); o2.connect(g2).connect(lp); lp.connect(env).connect(p).connect(v.out);
+  o1.start(when); o2.start(when); o1.stop(when + 3); o2.stop(when + 3);
+}
+
+const koto: VoiceFactory = (v) => {
+  let next = v.ctx.currentTime + 2;
+  return {
+    update(now) {
+      if (next < now - 0.5) next = now;
+      while (next < now + 0.3) {
+        const when = Math.max(next, now + 0.02);
+        const n = SCALES[v.sim.store.str("a.scale")]?.steps.length ?? 5;
+        const len = 3 + Math.floor(v.rand() * 3), start = Math.floor(v.rand() * n), dir = v.rand() < 0.5 ? 1 : -1;
+        const pan = v.rand() * 1.2 - 0.6, gap = 0.28 + v.rand() * 0.2;
+        for (let i = 0; i < len; i++) pluck(v, when + i * gap, v.freq(start + dir * i + n, 0), 0.11 + v.rand() * 0.04, pan);
+        next += len * gap + 5 + v.rand() * 10 - 6 * v.sim.v("a.activity");
+      }
+    },
+    stop() {},
+  };
+};
+
 const ocean: VoiceFactory = (v) => {
   const src = loop(v, v.noise.brown);
   const lp = v.ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 700;
@@ -264,7 +298,7 @@ const breath: VoiceFactory = (v) => {
   };
 };
 
-const FACTORIES: Record<string, VoiceFactory> = { drone, chimes, bowls, ocean, rain, wind, stream, noise, pulse, breath };
+const FACTORIES: Record<string, VoiceFactory> = { drone, chimes, bowls, koto, ocean, rain, wind, stream, noise, pulse, breath };
 
 /** Master chain: voices -> dry + reverb -> soften -> volume -> limiter -> soft clip -> out.
  *  The limiter and clip stages sit after everything, so no voice, input or bug
