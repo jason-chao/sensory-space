@@ -84,6 +84,10 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Generic EEG source: band powers and quality computed in the browser from raw EEG; optional band, quality, heart-rate and motion streams
 - No device-specific names in the repository
 
+## Done in version 0.4.1
+
+- Soundscape stepper in the control bar, so sound gets the same treatment as picture
+
 ## Next
 
 | Priority | Item |

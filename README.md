@@ -18,13 +18,14 @@ Sensory Space is for relaxation and enjoyment. It is not a medical device and no
 
 ## Controls
 
-The control bar has four stepper groups, each with a caption and its current value (Scene, Colours, Motion, Volume), and four actions with a symbol and a word (Ease, Stop, Settings, Hide). Settings are grouped by concept: Picture, Sound, Changes, Input, Setups, Recording, Help.
+The control bar has five stepper groups, each with a caption and its current value (Scene, Colours, Motion, Soundscape, Volume), and four actions with a symbol and a word (Ease, Stop, Settings, Hide). Settings are grouped by concept: Picture, Sound, Changes, Input, Setups, Recording, Help.
 
 | Key | Action |
 |---|---|
 | `←` `→` | Previous or next scene |
 | `C` `V` | Next or previous colours |
 | `+` `−` | Motion faster or slower |
+| `[` `]` | Previous or next soundscape |
 | `↑` `↓` | Volume up or down |
 | `E` | Ease: dimmer, slower and quieter until pressed again |
 | `X` | Stop at once: black and silent. Press again to resume |

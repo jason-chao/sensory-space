@@ -13,7 +13,7 @@ import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "variation"]);
@@ -144,6 +144,8 @@ export class App {
       else if (k === "arrowdown") { e.preventDefault(); this.nudge("a.volume", -0.05); }
       else if (k === "c") this.stepPalette(1);
       else if (k === "v") this.stepPalette(-1);
+      else if (k === "]") this.stepSoundscape(1);
+      else if (k === "[") this.stepSoundscape(-1);
       else if (k === "+" || k === "=") this.nudge("v.speed", 0.1);
       else if (k === "-" || k === "_") this.nudge("v.speed", -0.1);
       else if (k === "x" || k === "backspace") this.toggleStop();
@@ -278,6 +280,14 @@ export class App {
     if (!sc) return;
     for (const v of VOICES) this.store.set(`a.voice.${v.id}`, sc.layers[v.id] ?? 0);
     this.store.set("a.scale", sc.scale);
+  }
+  /** step through the named soundscapes; a hand-made mix is left for the first named one */
+  stepSoundscape(d: number): void {
+    const cur = this.currentSoundscape();
+    const i = SOUNDSCAPES.findIndex((s) => s.id === cur);
+    const next = cur === null ? SOUNDSCAPES[d > 0 ? 0 : SOUNDSCAPES.length - 1] : SOUNDSCAPES[(i + d + SOUNDSCAPES.length) % SOUNDSCAPES.length];
+    this.applySoundscape(next.id);
+    this.ui.toast(cur === null ? `${next.label} (the hand-made mix was replaced)` : `${next.label}: ${next.blurb}`);
   }
   currentProfile(): string | null {
     for (const p of PROFILES) if (Object.entries(p.set).every(([k, v]) => Math.abs(this.store.num(k) - v) < 0.005)) return p.id;

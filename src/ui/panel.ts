@@ -211,7 +211,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   const pageHelp = el("div", { class: "page" },
     section("keys", "Keys", el("table", { class: "keys" },
       key("← →", "previous or next scene"), key("C V", "next or previous colours"), key("+ −", "motion faster or slower"),
-      key("↑ ↓", "volume up or down"), key("E", "ease on or off"), key("X", "stop at once, or resume"), key("M", "mute"),
+      key("[ ]", "previous or next soundscape"), key("↑ ↓", "volume up or down"), key("E", "ease on or off"), key("X", "stop at once, or resume"), key("M", "mute"),
       key("P", "hold still"), key("B", "picture off"), key("F", "full screen"), key("S", "settings"), key("H", "hide or show the bar"))),
     section("about", "About", el("p", { class: "hint" }, "Sensory Space is for relaxation and enjoyment. It is not a medical device and not a treatment. Brightness changes are rate-limited by design, which lowers risk but cannot remove it. If you are sensitive to light or pattern, start with the Gentle intensity and a dim room light on.")),
   );
@@ -237,11 +237,14 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   // ---------------------------------------------------------------- bar
   const group = (caption: string, prev: HTMLElement, value: HTMLElement, next: HTMLElement, cls = "") =>
     el("div", { class: `grp ${cls}`, role: "group", "aria-label": caption }, el("div", { class: "cap" }, caption), el("div", { class: "row" }, prev, value, next));
-  const sceneName = el("span", { class: "val" }), palName = el("span", { class: "val" }), speedVal = el("span", { class: "val" }), volVal = el("span", { class: "val" });
+  const sceneName = el("span", { class: "val" }), palName = el("span", { class: "val" }), speedVal = el("span", { class: "val" }), volVal = el("span", { class: "val" }), scapeName = el("span", { class: "val" });
   syncers.push(() => {
     sceneName.textContent = getScene(store.str("scene")).label;
     palName.textContent = getPalette(store.str("palette")).label;
     speedVal.textContent = pct("v.speed", store.num("v.speed"));
+    const sc = app.currentSoundscape();
+    scapeName.textContent = sc ? SOUNDSCAPES.find((s) => s.id === sc)!.label : "Custom mix";
+    scapeName.title = sc ? SOUNDSCAPES.find((s) => s.id === sc)!.blurb : "Layers set by hand";
     volVal.textContent = store.bool("a.mute") ? "muted" : pct("a.volume", store.num("a.volume"));
     document.body.classList.toggle("icons-only", store.bool("ui.iconsOnly"));
   });
@@ -252,6 +255,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     group("Scene", step("prev", "Previous scene", () => app.stepScene(-1)), sceneName, step("next", "Next scene", () => app.stepScene(1))),
     group("Colours", step("prev", "Previous colours", () => app.stepPalette(-1)), palName, step("next", "Next colours", () => app.stepPalette(1))),
     group("Motion", step("minus", "Slower", () => app.nudge("v.speed", -0.1)), speedVal, step("plus", "Faster", () => app.nudge("v.speed", 0.1)), "narrow-hide"),
+    group("Soundscape", step("prev", "Previous soundscape", () => app.stepSoundscape(-1)), scapeName, step("next", "Next soundscape", () => app.stepSoundscape(1))),
     group("Volume", step("minus", "Quieter", () => app.nudge("a.volume", -0.05)), volVal, step("plus", "Louder", () => app.nudge("a.volume", 0.05)), "narrow-hide"),
     el("div", { class: "acts" },
       easeBtn,
