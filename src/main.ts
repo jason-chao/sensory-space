@@ -108,9 +108,25 @@ export class App {
     canvas.addEventListener("webglcontextrestored", () => { this.engine = new VisualEngine(canvas, this.sim); });
   }
 
+  private wake: WakeLockSentinel | null = null;
+  /** "held", "unavailable" (no API or insecure page), "released" (stopped or hidden), "off" (not started) */
+  wakeState: "off" | "held" | "unavailable" | "released" = "off";
+
   private async keepAwake(): Promise<void> {
-    if (!this.started || !("wakeLock" in navigator)) return;
-    try { await navigator.wakeLock.request("screen"); } catch { /* not available on insecure origins */ }
+    if (!this.started || this.stopped || document.visibilityState !== "visible") return;
+    if (!("wakeLock" in navigator) || !window.isSecureContext) { this.wakeState = "unavailable"; return; }
+    if (this.wake && !this.wake.released) return;
+    try {
+      this.wake = await navigator.wakeLock.request("screen");
+      this.wakeState = "held";
+      this.wake.addEventListener("release", () => { if (this.wakeState === "held") this.wakeState = "released"; });
+    } catch { this.wakeState = "unavailable"; }
+  }
+
+  private async letSleep(): Promise<void> {
+    if (this.wake && !this.wake.released) { try { await this.wake.release(); } catch { /* ignore */ } }
+    this.wake = null;
+    if (this.wakeState === "held") this.wakeState = "released";
   }
 
   private bindInput(): void {
@@ -194,6 +210,8 @@ export class App {
     if (!this.started) return;
     this.stopped = !this.stopped;
     this.audio.setStopped(this.stopped);
+    // a black screen may sleep; it wakes again on resume
+    if (this.stopped) void this.letSleep(); else void this.keepAwake();
     if (this.stopped) {
       this.stopEl = document.createElement("div");
       this.stopEl.className = "stopped";

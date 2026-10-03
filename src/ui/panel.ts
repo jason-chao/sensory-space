@@ -166,6 +166,15 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   );
 
   // ---------------------------------------------------------------- Setups
+  const wakeNote = el("p", { class: "hint" });
+  const syncWake = () => {
+    const w = app.wakeState;
+    wakeNote.textContent =
+      w === "held" ? "Screen: kept awake while this page is showing." :
+      w === "unavailable" ? (window.isSecureContext ? "Screen: this browser cannot keep the screen awake. Adjust the device's sleep setting instead." : "Screen: keeping it awake needs a secure (https) address. On this address the screen may sleep on the device's usual timer.") :
+      w === "released" ? "Screen: free to sleep while stopped or hidden." : "Screen: the wake lock is requested when you press Begin.";
+  };
+  window.setInterval(syncWake, 1000); syncWake();
   const profGrid = el("div", { class: "rowb" }, ...PROFILES.map((p) => {
     const b = el("button", { title: p.blurb, onclick: () => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); } }, p.label);
     syncers.push(() => { const on = app.currentProfile() === p.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
@@ -185,7 +194,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
         el("button", { onclick: () => { const n = prompt("Name for this setup"); if (n) { app.savePreset(n); fillPresets(); presetSel.value = n; } } }, "Save current"),
         el("button", { onclick: () => { if (presetSel.value) { app.deletePreset(presetSel.value); fillPresets(); } } }, "Delete")),
       el("div", { class: "rowb" }, el("button", { onclick: () => app.resetDefaults() }, "Reset everything to defaults"))),
-    section("display", "Display", el("div", { class: "rowb" }, toggle("ui.iconsOnly", "Bar shows symbols only", "Bar shows symbols and words"))),
+    section("display", "Display", el("div", { class: "rowb" }, toggle("ui.iconsOnly", "Bar shows symbols only", "Bar shows symbols and words")), wakeNote),
   );
 
   // ---------------------------------------------------------------- Recording
