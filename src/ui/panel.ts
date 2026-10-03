@@ -161,7 +161,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     touchSection(),
     section("devices", "Devices", el("div", { class: "rowb" }, bwBtn, demoBtn), status,
       el("details", {}, el("summary", { class: "hint" }, "Bridge address"), urlInput,
-        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of an EEG bridge that speaks the Sensory Space protocol (see docs/EEG-BRIDGE-PROTOCOL.md)."))),
+        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of an EEG bridge that speaks the ", el("a", { href: "https://github.com/jason-chao/sensory_space/blob/main/docs/EEG-BRIDGE-PROTOCOL.md", target: "_blank", rel: "noopener" }, "Sensory Space bridge protocol"), "."))),
     section("signals", "Signals", meters),
     section("mode", "How signals shape the space", modeSel, modeHint, slider("r.influence"),
       el("p", { class: "hint" }, "Signals are an influence, not a score. There is nothing to achieve. With a weak or missing signal the space simply carries on. Sensory Space does not send or store signal data unless you record a session with signals included. The bridge that supplies the signals is a separate system and may keep its own records.")),
@@ -218,6 +218,12 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   );
 
   // ---------------------------------------------------------------- Help
+  const ghLink = () => {
+    const a = el("a", { class: "ghlink", href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener", "aria-label": "Sensory Space on GitHub", title: "Source code on GitHub" });
+    a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>';
+    a.append(el("span", {}, "Source on GitHub"));
+    return a;
+  };
   const key = (k: string, what: string) => el("tr", {}, el("td", {}, el("kbd", {}, k)), el("td", {}, what));
   const pageHelp = el("div", { class: "page" },
     FEATURES.input ? null : touchSection(),
@@ -229,11 +235,11 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       el("p", {}, el("strong", {}, "Sensory Space"), " ", el("span", { class: "hint" }, `version ${app.version}`)),
       el("p", { class: "hint" }, "Slow light, living sound, room to linger. A generative art project of light and sound for any screen, from a projected wall to a laptop. Everything is generated live in this browser."),
       el("p", { class: "hint" }, "By Jason Chao. Designed with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound are yours to set. Brightness changes are rate-limited by design, which lowers risk but cannot remove it; if you are sensitive to light or pattern, start with Gentle."),
-      el("p", { class: "hint" }, el("a", { href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener" }, "github.com/jason-chao/sensory_space"), " · MIT licence")),
+      el("p", { class: "hint" }, ghLink(), " · MIT licence")),
   );
 
   // ---------------------------------------------------------------- panel and tabs
-  const all: [string, HTMLElement][] = [["Picture", pagePicture], ["Sound", pageSound], ["Changes", pageChanges], ["Input", pageInput], ["Setups", pageSetups], ["Recording", pageRecording], ["Help", pageHelp]];
+  const all: [string, HTMLElement][] = [["Picture", pagePicture], ["Sound", pageSound], ["Changes", pageChanges], ["Input", pageInput], ["Setups", pageSetups], ["Record", pageRecording], ["Help", pageHelp]];
   const shown = all.filter(([n]) => n !== "Input" || FEATURES.input);
   const pages = shown.map(([, p]) => p);
   const names = shown.map(([n]) => n);
@@ -248,7 +254,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     el("div", { class: "phead" }, el("strong", {}, "Settings"),
       action("stop", "Stop", { title: "Black and silent at once (X)", onclick: () => app.toggleStop() }),
       action("close", "Close", { onclick: () => app.togglePanel() })),
-    el("div", { class: "tabs", role: "tablist" }, ...tabBtns), el("div", { class: "pages" }, ...pages));
+    el("div", { class: "tabs", role: "tablist", style: `--tabs:${tabBtns.length}` }, ...tabBtns), el("div", { class: "pages" }, ...pages));
   let savedTab = 0; try { savedTab = Number(localStorage.getItem("sensory.tab")) || 0; } catch { /* ignore */ }
   show(Math.min(savedTab, pages.length - 1));
 

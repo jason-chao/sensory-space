@@ -77,7 +77,7 @@ body.idle .handle { opacity: 0; }
 
 .panel a { color: var(--accent); }
 .panel {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); background: var(--bg);
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(464px, 100vw); background: var(--bg);
   border-left: 1px solid var(--line); backdrop-filter: blur(14px); transform: translateX(105%);
   transition: transform 0.35s ease; display: flex; flex-direction: column;
 }
@@ -85,8 +85,13 @@ body.idle .handle { opacity: 0; }
 .phead { display: flex; align-items: center; gap: 8px; padding: 10px 12px 0; }
 .phead strong { flex: 1; font-size: 1.05rem; font-weight: 500; }
 .phead .act { width: 60px; height: 46px; }
-.tabs { display: flex; gap: 4px; padding: 8px 10px 0; flex-wrap: wrap; }
-.tabs button { flex: 1 0 auto; min-height: 38px; padding: 6px 10px; font-size: 0.9rem; border-radius: 10px; }
+/* one row of equal tabs; two equal rows on a narrow panel */
+.tabs { display: grid; grid-template-columns: repeat(var(--tabs, 7), 1fr); gap: 4px; padding: 8px 10px 0; }
+.tabs button { min-height: 38px; padding: 6px 1px; font-size: 0.76rem; border-radius: 10px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs button.on { background: rgba(143, 214, 200, 0.22); border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+@media (max-width: 480px) { .tabs { grid-template-columns: repeat(4, 1fr); } }
+.ghlink { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); text-decoration: none; }
+.ghlink svg { width: 20px; height: 20px; fill: currentColor; }
 details { border: 1px solid var(--line); border-radius: 12px; margin: 10px 0; }
 summary { cursor: pointer; padding: 10px 14px; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); font-weight: 600; list-style: none; display: flex; align-items: center; }
 summary::before { content: "▸"; margin-right: 8px; font-size: 0.8rem; transition: transform 0.2s; }
