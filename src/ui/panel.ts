@@ -178,7 +178,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   };
   window.setInterval(syncWake, 1000); syncWake();
   const profGrid = el("div", { class: "rowb" }, ...PROFILES.map((p) => {
-    const b = el("button", { title: p.blurb, onclick: () => { app.usagePreset(p.id); for (const [k, v] of Object.entries(p.set)) { app.via = "panel"; store.set(k, v); } } }, p.label);
+    const b = el("button", { title: p.blurb, onclick: () => { app.usagePreset(p.id); app.applyQuietly(() => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); }); } }, p.label);
     syncers.push(() => { const on = app.currentProfile() === p.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
     return b;
   }));

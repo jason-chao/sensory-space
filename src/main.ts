@@ -47,6 +47,8 @@ export class App {
   private usage = { startedAt: 0, sceneSince: 0, paletteSince: 0, touches: 0, touchScene: "", scenes: new Set<string>(), frames: 0, frameMs: 0 };
   private debounce = analytics.debouncer(1500);
   private inputSince = 0; private inputGood = 0; private inputTicks = 0;
+  /** while a soundscape or preset applies several settings at once, the individual changes are not counted */
+  private quiet = false;
 
   constructor(private test: boolean) {
     defineParams(this.store);
@@ -82,7 +84,7 @@ export class App {
     const now = () => Math.round((performance.now() - this.usage.startedAt) / 1000);
     const via = (origin: string) => (origin === "replay" ? "replay" : origin === "system" ? "auto" : this.via || "panel");
     this.store.onChange((key, value, origin) => {
-      if (!this.started) return;
+      if (!this.started || this.quiet) return;
       const v = via(origin);
       if (key === "scene") {
         const s = String(value); this.usage.scenes.add(s);
@@ -399,8 +401,10 @@ export class App {
     const sc = SOUNDSCAPES.find((s) => s.id === id);
     if (!sc) return;
     if (this.via !== "bar" && this.via !== "key") analytics.track("soundscape", { soundscape: id, via: "panel", from_custom: this.currentSoundscape() === null });
+    this.quiet = true;
     for (const v of VOICES) this.store.set(`a.voice.${v.id}`, sc.layers[v.id] ?? 0);
     this.store.set("a.scale", sc.scale);
+    this.quiet = false;
   }
   /** step through the named soundscapes; a hand-made mix is left for the first named one */
   stepSoundscape(d: number, via: "bar" | "key" = "bar"): void {
@@ -429,6 +433,8 @@ export class App {
 
   usageTab(name: string): void { analytics.track("settings", { tab: name }); }
   usagePreset(id: string): void { analytics.track("preset", { preset: id, via: "panel" }); }
+  /** apply several settings as one counted action */
+  applyQuietly(fn: () => void): void { this.quiet = true; try { fn(); } finally { this.quiet = false; } }
   analyticsOn(): boolean { return analytics.isEnabled(); }
   analyticsOptedOut(): boolean { return analytics.optedOut(); }
   setAnalyticsOptOut(v: boolean): void { analytics.setOptOut(v); }
