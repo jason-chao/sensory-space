@@ -1,28 +1,28 @@
+<h1 align="center">Sensory Space</h1>
+<p align="center"><em>Slow light, living sound, room to linger.</em></p>
+
+<p align="center">
+  <a href="https://sensory-space.org"><strong>Open Sensory Space → sensory-space.org</strong></a><br>
+  <sub>Nothing to install. Open it on your computer, tablet or phone. Listen through speakers or headphones, or explore in silence.</sub>
+</p>
+
 <p align="center">
   <img src="docs/images/hero.gif" width="100%" alt="Kaleidoscope dissolving into ink in water, then into sea glass, in the soft spectrum palette">
 </p>
 
-<h1 align="center">Sensory Space</h1>
-<p align="center"><em>Slow light, living sound, room to linger.</em></p>
+Light drifts, sound gathers, and a touch opens a bloom of light and a note. Sensory Space is an open, generative artwork of light and sound, made live in your browser, for any screen from a projected wall to the laptop on your desk.
 
-Light drifts, sound gathers, and a touch makes a bloom and a note. Sensory Space is a slow, generative artwork of light and sound for any screen: a projected wall, a large television, or the laptop on your desk. It runs in a web browser and is generated live, so no two minutes are the same. Twenty scenes explore colour and pattern, with synthesised soundscapes beside them. Made with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound belong to the person in the room.
+Twenty scenes explore colour and pattern, accompanied by synthesised soundscapes. Made with care for autistic adults, it leaves the pace, brightness and sound to the person in the room.
 
 <p align="center">
   <img src="docs/images/collage.jpg" width="100%" alt="Eight scenes: aurora, ink in water, kaleidoscope, flowers, water of light, sea glass, light lattice, resonating lamps">
 </p>
 
-## Begin in a minute
+## Step inside
 
-```bash
-git clone https://github.com/jason-chao/sensory_space.git
-cd sensory_space
-npm install
-npm run dev
-```
+Open **[sensory-space.org](https://sensory-space.org)** and press **Begin**. Sound starts then, so set your volume low first. Full screen is optional. Touch or click the picture, or simply watch and listen.
 
-Open the address it prints, press **Begin**, then **Full screen**. Lower the lights if you can, keep the sound soft, and stay awhile.
-
-Or run the published container (section *In a room* below), or open the static build on any web host.
+Choose **Gentle** for dimmer, slower scenes. **Ease** softens everything at once; **Stop** takes it to black and silence. It is free, there is no account, and once loaded it works without a connection. The light and sound are generated in your browser, and your settings stay on your device.
 
 ## Twenty scenes
 
@@ -49,7 +49,7 @@ Or run the published container (section *In a room* below), or open the static b
 </tr>
 </table>
 
-And also: lava lamp, fireflies, breathing orb, night sky, rain on a pond, bubbles, brush strokes, colour wash. Ten palettes, from deep sea to ember. Every scene grows from a seed, so "new variation" gives a pattern no one has seen before.
+And also: lava lamp, fireflies, breathing orb, night sky, rain on a pond, bubbles, brush strokes, colour wash. Ten palettes, from deep sea to ember. Every scene grows from a seed; choose **New variation** to explore another pattern.
 
 ## Sound
 
@@ -66,19 +66,19 @@ Eleven layers, all synthesised in the browser as you listen: warm drone, chimes,
 | Breathing | breath sound at the breathing pace, soft drone, bowls |
 | Chimes alone | sparse chimes, nothing else |
 
-Five scales, including two Japanese pentatonic scales. Nothing is recorded or sampled; there is nothing to license.
+Five scales, including two Japanese pentatonic scales. All sound is synthesised live, without recorded samples.
 
 ## Touch, and the space answers
 
-Touch or click the picture: a bloom of light opens and a note sounds. Left to right walks up the scale, so the same place always gives the same note. Some scenes answer in their own way. Lamps pass light to their neighbours. Flowers scatter. Water parts.
+Touch or click the picture: a bloom of light opens and a note sounds. Left to right walks up the scale; with the same scale and key, the same place gives the same note. Some scenes answer in their own way. Lamps pass light to their neighbours. Flowers scatter. Water parts.
 
 ## Made with care
 
 - **Everything is yours to set.** Scene, colours, motion, soundscape and volume sit on one bar, with their current values. Settings go deeper, grouped by concept.
-- **Nothing changes suddenly.** Every control is followed smoothly. Scenes and palettes cross-fade over six seconds. Sound rises over five.
-- **Light is rate-limited by design.** The last stage before the screen limits how fast the brightness of any region may change, whatever a scene, a setting or an input asks for. This keeps the work well inside published flash limits. An automated check drives the renderer through worst cases and fails if it ever sees more than three flashes a second.
-- **Ease and Stop.** `E` makes everything dimmer, slower and quieter until pressed again. `X` goes to black and silence at once.
-- **Private.** Everything happens in the browser. Nothing is sent anywhere.
+- **Changes are gradual.** Every control is followed smoothly. Scenes and palettes cross-fade over six seconds. Sound rises over five.
+- **Brightness changes are limited by design.** The last stage before the screen limits how fast the brightness of any region may change, whatever a scene, a setting or an input asks for. The checks behind this are described for makers below.
+- **Ease and Stop.** `E` makes everything dimmer, slower and quieter until pressed again. `X` goes to black and silence at once, the one deliberate exception to gradual change.
+- **Private.** The light and sound are generated in your browser, and your settings are saved on your device.
 
 The reasoning, the evidence and the decisions are written up in [docs/RESEARCH.md](docs/RESEARCH.md).
 
@@ -87,25 +87,10 @@ The reasoning, the evidence and the decisions are written up in [docs/RESEARCH.m
 Sensory Space works on whatever you have. The bigger the picture, the more it surrounds you, but a small screen still makes a quiet window to look into.
 
 - **A projector** on a plain wall or a ceiling gives the most immersive result.
-- **A large television** works beautifully from a sofa. Connect a laptop, or open the page in the television's own browser.
+- **A large television** works beautifully from a sofa. Connect a laptop, or try the television's own browser if it is a recent one.
 - **A computer, tablet or phone** works too, full screen or in a window beside your work.
 
-Lower the lights if you can. Built-in speakers are fine; headphones or a pair of good speakers bring out the sound. Press `F` for full screen and `H` to hide the controls. The bar and the pointer hide by themselves after a few seconds.
-
-To serve it from a small computer for a room, a gallery or a shared space:
-
-```bash
-cp .env.example .env     # ports, https address, bridge upstream
-docker compose up -d --build
-```
-
-The container serves the app over http and https. Browsers will ask you to accept its self-signed certificate once. Export its root certificate to trust it everywhere:
-
-```bash
-docker exec sensory-space cat /data/caddy/pki/authorities/local/root.crt > sensory-space-root.crt
-```
-
-For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH` for a sub-path). The public site at [sensory-space.org](https://sensory-space.org) is deployed with `npm run deploy:pages`.
+Lower the lights if you can. Built-in speakers are fine; headphones or a pair of good speakers bring out the sound. Press `F` for full screen and `H` to hide the controls. The bar and the pointer hide by themselves after a few seconds. The browser needs WebGL2, which every current browser has.
 
 ## Controls
 
@@ -121,7 +106,7 @@ For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH`
 | `M` | Mute |
 | `P` | Hold still |
 | `B` | Picture off |
-| `F` or double-click | Full screen |
+| `F` | Full screen |
 | `S` | Settings |
 | `H` | Hide or show the control bar |
 
@@ -129,11 +114,34 @@ For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH`
 
 Recording is off unless you start it. A session is a small file of your settings and changes. Sensory Space replays it later, regenerating the same light and sound from the same seed.
 
-## For the curious: body signals
-
-Entirely optional, and nothing else depends on it. In builds that include it, if you happen to have an EEG headband, a small bridge program can let its signals gently tint the colours and tone. Nothing is scored and nothing speeds up when you are tense. The bridge speaks an open format based on Lab Streaming Layer, described in [docs/EEG-BRIDGE-PROTOCOL.md](docs/EEG-BRIDGE-PROTOCOL.md), and **Try demo signals** shows the idea without any hardware.
 
 ## For makers
+
+Run your own copy:
+
+```bash
+git clone https://github.com/jason-chao/sensory_space.git
+cd sensory_space
+npm install
+npm run dev
+```
+
+To serve it from a small computer for a room, a gallery or a shared space, with a secure address:
+
+```bash
+cp .env.example .env     # ports, https address, optional input feature
+docker compose up -d --build
+```
+
+The container serves the app over http and https with a self-signed certificate; browsers ask you to accept it once. Export its root certificate to trust it everywhere:
+
+```bash
+docker exec sensory-space cat /data/caddy/pki/authorities/local/root.crt > sensory-space-root.crt
+```
+
+For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH` for a sub-path). The public site is deployed with `npm run deploy:pages`.
+
+Checks:
 
 ```bash
 npm test                      # unit tests
@@ -142,6 +150,10 @@ npm run flashcheck            # photosensitivity check on the real renderer
 node scripts/audiocheck.mjs   # loudness ceiling check
 node scripts/shots.mjs shots  # a still of every scene
 ```
+
+The flash check drives the real renderer through worst cases (controls slammed between extremes, scenes switched every 100 ms, patterns replaced abruptly) and fails if any region shows more than three flashes in a second, the threshold in WCAG 2.3.1. A control case with the limiter disabled proves the check can fail.
+
+**Body signals.** For custom installations, an optional input feature can let body signals from an EEG headband gently influence colour and tone through a bridge program. It is not included on the public site. The bridge speaks an open format based on Lab Streaming Layer, described in [docs/EEG-BRIDGE-PROTOCOL.md](docs/EEG-BRIDGE-PROTOCOL.md); nothing is scored, and **Try demo signals** shows the idea without hardware.
 
 - **A scene** is one GLSL function of position and time in `src/visual/scenes.ts`. It needs no safety code of its own.
 - **A sound layer** is a factory in `src/audio/engine.ts` and a line in `src/audio/voicelist.ts`.
@@ -162,4 +174,4 @@ docs          research and decisions, plan, protocol
 
 Sensory Space is by **Jason Chao**. Released under the [MIT License](LICENSE).
 
-Give it a wall or a screen, lower the lights, and stay awhile.
+Take your time. **[Open Sensory Space](https://sensory-space.org)**.
