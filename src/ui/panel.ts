@@ -241,7 +241,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   // ---------------------------------------------------------------- bar
   const group = (caption: string, prev: HTMLElement, value: HTMLElement, next: HTMLElement, cls = "") =>
     el("div", { class: `grp ${cls}`, role: "group", "aria-label": caption }, el("div", { class: "cap" }, caption), el("div", { class: "row" }, prev, value, next));
-  const sceneName = el("span", { class: "val" }), palName = el("span", { class: "val" }), speedVal = el("span", { class: "val" }), volVal = el("span", { class: "val" }), scapeName = el("span", { class: "val" });
+  const sceneName = el("span", { class: "val" }), palName = el("span", { class: "val" }), speedVal = el("span", { class: "val num" }), volVal = el("span", { class: "val num" }), scapeName = el("span", { class: "val" });
   syncers.push(() => {
     sceneName.textContent = getScene(store.str("scene")).label;
     palName.textContent = getPalette(store.str("palette")).label;

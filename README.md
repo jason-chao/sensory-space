@@ -59,7 +59,7 @@ Eleven layers, all synthesised in the browser as you listen: warm drone, chimes,
 |---|---|
 | Shore at dusk | ocean, warm drone, a few chimes |
 | Night garden | wind, chimes, quiet drone, a bowl now and then |
-| Rain on the window | rain, warm drone |
+| Rainy window | rain, warm drone |
 | Temple bells | singing bowls, plucked strings, low drone |
 | Mountain stream | stream, light wind, chimes |
 | Deep hush | brown noise, low drone, slow pulse |
