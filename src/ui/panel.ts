@@ -14,7 +14,7 @@ const LS_SECTIONS = "sensory.sections";
 export interface Ui {
   refresh(): void;
   toast(msg: string): void;
-  showStart(onStart: (fullscreen: boolean) => void): void;
+  showStart(onStart: (fullscreen: boolean, profile: string) => void): void;
   /** called by the app when thumbnails may be stale */
   thumbsStale(): void;
 }
@@ -178,7 +178,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   };
   window.setInterval(syncWake, 1000); syncWake();
   const profGrid = el("div", { class: "rowb" }, ...PROFILES.map((p) => {
-    const b = el("button", { title: p.blurb, onclick: () => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); } }, p.label);
+    const b = el("button", { title: p.blurb, onclick: () => { app.usagePreset(p.id); for (const [k, v] of Object.entries(p.set)) { app.via = "panel"; store.set(k, v); } } }, p.label);
     syncers.push(() => { const on = app.currentProfile() === p.id; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
     return b;
   }));
@@ -218,6 +218,14 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   );
 
   // ---------------------------------------------------------------- Help
+  const usageNote = () => {
+    if (!app.analyticsOn()) return el("p", { class: "hint" }, "No usage counting runs on this copy.");
+    const link = el("a", { href: "#", onclick: (e: Event) => { e.preventDefault(); app.setAnalyticsOptOut(!app.analyticsOptedOut()); sync(); } });
+    const p = el("p", { class: "hint" }, "On sensory-space.org, anonymous usage counts are kept with a cookieless counter hosted by the author: which scenes and sounds are used, and for how long. Nothing personal, nothing about signals. ", link);
+    const sync = () => { link.textContent = app.analyticsOptedOut() ? "You have opted out on this device. Opt back in." : "Opt out on this device."; };
+    sync();
+    return p;
+  };
   const ghLink = () => {
     const a = el("a", { class: "ghlink", href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener", "aria-label": "Sensory Space on GitHub", title: "Source code on GitHub" });
     a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>';
@@ -235,7 +243,8 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       el("p", {}, el("strong", {}, "Sensory Space"), " ", el("span", { class: "hint" }, `version ${app.version}`)),
       el("p", { class: "hint" }, "Slow light, living sound, room to linger. A generative art project of light and sound for any screen, from a projected wall to a laptop. Everything is generated live in this browser."),
       el("p", { class: "hint" }, "By Jason Chao. Designed with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound are yours to set. Brightness changes are rate-limited by design, which lowers risk but cannot remove it; if you are sensitive to light or pattern, start with Gentle."),
-      el("p", { class: "hint" }, ghLink(), " · MIT licence")),
+      el("p", { class: "hint" }, ghLink(), " · MIT licence"),
+      usageNote()),
   );
 
   // ---------------------------------------------------------------- panel and tabs
@@ -243,8 +252,9 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   const shown = all.filter(([n]) => n !== "Input" || FEATURES.input);
   const pages = shown.map(([, p]) => p);
   const names = shown.map(([n]) => n);
-  const tabBtns = names.map((n, i) => el("button", { role: "tab", onclick: () => show(i) }, n));
-  const show = (i: number) => {
+  const tabBtns = names.map((n, i) => el("button", { role: "tab", onclick: () => show(i, true) }, n));
+  const show = (i: number, byUser = false) => {
+    if (byUser) app.usageTab(names[i]);
     pages.forEach((p, j) => p.classList.toggle("on", i === j));
     tabBtns.forEach((b, j) => { b.classList.toggle("on", i === j); b.setAttribute("aria-selected", String(i === j)); });
     try { localStorage.setItem("sensory.tab", String(i)); } catch { /* ignore */ }
@@ -366,7 +376,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
           if (chosen) { const p = PROFILES.find((x) => x.id === chosen)!; for (const [k, v] of Object.entries(p.set)) store.set(k, v); }
           start.classList.add("hide");
           window.setTimeout(() => start.remove(), 1500);
-          onStart(fs.checked);
+          onStart(fs.checked, chosen);
         } }, "Begin")),
       ));
       root.append(start);

@@ -13,8 +13,9 @@ import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
 import { FEATURES } from "./core/features";
+import * as analytics from "./analytics";
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "variation"]);
@@ -41,6 +42,11 @@ export class App {
   private touchN = 0;
   private lastTouch = 0;
   private stopEl: HTMLElement | null = null;
+  /** how a change was made, for the usage counts; set by the caller just before the store changes */
+  via: "bar" | "panel" | "key" | "auto" | "replay" | "touch" | "" = "";
+  private usage = { startedAt: 0, sceneSince: 0, paletteSince: 0, touches: 0, touchScene: "", scenes: new Set<string>(), frames: 0, frameMs: 0 };
+  private debounce = analytics.debouncer(1500);
+  private inputSince = 0; private inputGood = 0; private inputTicks = 0;
 
   constructor(private test: boolean) {
     defineParams(this.store);
@@ -61,11 +67,81 @@ export class App {
       const [x, y] = String(value).split(",").map(Number);
       this.audio.touch(x, y);
     });
+    if (!test && analytics.init()) this.bindUsage();
     let saveTimer = 0;
     this.store.onChange((_k, _v, origin) => {
       if (origin === "replay" || test) return;
       window.clearTimeout(saveTimer);
       saveTimer = window.setTimeout(() => ls.set(LS_STATE, this.store.snapshot()), 800);
+    });
+  }
+
+  /** anonymous usage counts; see src/analytics.ts for the locks and docs/RESEARCH.md for the policy */
+  private bindUsage(): void {
+    const t = analytics.track;
+    const now = () => Math.round((performance.now() - this.usage.startedAt) / 1000);
+    const via = (origin: string) => (origin === "replay" ? "replay" : origin === "system" ? "auto" : this.via || "panel");
+    this.store.onChange((key, value, origin) => {
+      if (!this.started) return;
+      const v = via(origin);
+      if (key === "scene") {
+        const s = String(value); this.usage.scenes.add(s);
+        t("scene", { scene: s, via: v, previous_seconds: Math.round((performance.now() - this.usage.sceneSince) / 1000) });
+        this.usage.sceneSince = performance.now();
+      } else if (key === "palette") {
+        t("palette", { palette: String(value), via: v, previous_seconds: Math.round((performance.now() - this.usage.paletteSince) / 1000) });
+        this.usage.paletteSince = performance.now();
+      } else if (key === "touch") {
+        this.usage.touches++; this.usage.touchScene = this.store.str("scene");
+      } else if (key === "variation") {
+        t("control", { name: "variation", via: v });
+      } else if (key === "ease" || key === "freeze" || key === "v.blank" || key === "a.mute" || key === "ui.iconsOnly") {
+        const names: Record<string, string> = { ease: "ease", freeze: "hold-still", "v.blank": "picture-off", "a.mute": "mute", "ui.iconsOnly": "icons-only" };
+        t("control", { name: names[key], on: value === true, via: v });
+      } else if (key.startsWith("a.voice.")) {
+        this.debounce(key, () => t("layer", { layer: key.slice(8), level: Math.round(Number(value) * 100), via: v }));
+      } else if (key.startsWith("drift.")) {
+        this.debounce("changes", () => t("changes", { scene_minutes: this.store.num("drift.minutes"), palette_minutes: this.store.num("drift.colourMinutes"), rotation_minutes: this.store.num("drift.hueMinutes"), delay_minutes: this.store.num("drift.delay"), via: v }));
+      } else if (key === "a.scale" || key === "r.mode") {
+        t("adjust", { parameter: key, value: String(value), via: v });
+      } else if (typeof value === "number" && this.store.defs.has(key) && !key.startsWith("sc.")) {
+        const def = this.store.defs.get(key)!;
+        this.debounce(key, () => t("adjust", { parameter: key, value: Math.round(((this.store.num(key) - def.min) / (def.max - def.min)) * 100), via: v }));
+      }
+      this.via = "";
+    });
+    // touches, aggregated once a minute
+    window.setInterval(() => {
+      if (this.usage.touches) { t("touch", { count: this.usage.touches, scene: this.usage.touchScene }); this.usage.touches = 0; }
+    }, 60000);
+    // dwell: a pulse every two minutes while the page is showing
+    window.setInterval(() => {
+      if (!this.started || document.visibilityState !== "visible") return;
+      t("pulse", { minutes: Math.round(now() / 60), scene: this.store.str("scene"), soundscape: this.currentSoundscape() ?? "custom", fullscreen: !!document.fullscreenElement, stopped: this.stopped, eased: this.store.bool("ease") });
+    }, 120000);
+    // once, after a minute: whether the machine copes
+    window.setTimeout(() => {
+      if (this.started && this.usage.frames) t("perf", { frame_ms: Math.round((this.usage.frameMs / this.usage.frames) * 10) / 10, render_scale: Math.round(this.engine.scale * 100) / 100, screen_class: analytics.screenClass(screen.width * devicePixelRatio) });
+    }, 60000);
+    document.addEventListener("fullscreenchange", () => { if (this.started) t("control", { name: "full-screen", on: !!document.fullscreenElement }); });
+    const leave = () => {
+      if (!this.started) return;
+      if (this.usage.touches) { t("touch", { count: this.usage.touches, scene: this.usage.touchScene }); this.usage.touches = 0; }
+      t("leave", { minutes: Math.round(now() / 60), scenes_seen: this.usage.scenes.size, last_scene: this.store.str("scene"), soundscape: this.currentSoundscape() ?? "custom" });
+    };
+    window.addEventListener("pagehide", leave);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") leave(); });
+  }
+
+  /** called when the person presses Begin */
+  private usageBegin(fullscreen: boolean, profile: string): void {
+    this.usage.startedAt = performance.now(); this.usage.sceneSince = this.usage.paletteSince = performance.now();
+    this.usage.scenes.add(this.store.str("scene"));
+    analytics.track("begin", {
+      profile: profile || "unchanged", fullscreen, scene: this.store.str("scene"), palette: this.store.str("palette"), soundscape: this.currentSoundscape() ?? "custom",
+      reduced_motion: matchMedia("(prefers-reduced-motion: reduce)").matches, touch_capable: navigator.maxTouchPoints > 0,
+      screen_w: screen.width, screen_h: screen.height, pixel_ratio: Math.round(devicePixelRatio * 100) / 100, screen_class: analytics.screenClass(screen.width * devicePixelRatio),
+      language: navigator.language, returning: !!localStorage.getItem("sensory.state"),
     });
   }
 
@@ -76,6 +152,7 @@ export class App {
       this.engine = new VisualEngine(canvas, this.sim);
     } catch (e) {
       root.textContent = `Sensory Space needs WebGL2, which this browser does not provide. (${(e as Error).message})`;
+      analytics.track("perf", { webgl2: false });
       root.style.cssText = "position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center";
       return;
     }
@@ -83,8 +160,9 @@ export class App {
     this.ui = buildUi(this, root);
     this.bindInput();
     if (this.test) return;
-    this.ui.showStart((fullscreen) => {
+    this.ui.showStart((fullscreen, profile) => {
       this.started = true;
+      this.usageBegin(fullscreen, profile);
       void this.audio.start();
       if (fullscreen) this.toggleFullscreen();
       void this.keepAwake();
@@ -96,8 +174,10 @@ export class App {
       if (!this.stopped) {
         this.sim.advance(dt);
         this.sources.demo.tick();
+        if (this.sources.eeg.status === "live" || this.sources.demo.status === "live") { this.inputTicks++; if (this.sources.eeg.detail.startsWith("Good") || this.sources.demo.status === "live") this.inputGood++; }
         this.engine.render(dt);
         this.engine.reportFrame(dt * 1000, nowMs);
+        this.usage.frames++; this.usage.frameMs += dt * 1000;
       }
       requestAnimationFrame(frame);
     };
@@ -156,17 +236,18 @@ export class App {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
-      if (k === "e") this.toggleEase();
-      else if (k === "arrowright") this.stepScene(1);
-      else if (k === "arrowleft") this.stepScene(-1);
-      else if (k === "arrowup") { e.preventDefault(); this.nudge("a.volume", 0.05); }
-      else if (k === "arrowdown") { e.preventDefault(); this.nudge("a.volume", -0.05); }
-      else if (k === "c") this.stepPalette(1);
-      else if (k === "v") this.stepPalette(-1);
-      else if (k === "]") this.stepSoundscape(1);
-      else if (k === "[") this.stepSoundscape(-1);
-      else if (k === "+" || k === "=") this.nudge("v.speed", 0.1);
-      else if (k === "-" || k === "_") this.nudge("v.speed", -0.1);
+      this.via = "key";
+      if (k === "e") this.toggleEase("key");
+      else if (k === "arrowright") this.stepScene(1, "key");
+      else if (k === "arrowleft") this.stepScene(-1, "key");
+      else if (k === "arrowup") { e.preventDefault(); this.nudge("a.volume", 0.05, "key"); }
+      else if (k === "arrowdown") { e.preventDefault(); this.nudge("a.volume", -0.05, "key"); }
+      else if (k === "c") this.stepPalette(1, "key");
+      else if (k === "v") this.stepPalette(-1, "key");
+      else if (k === "]") this.stepSoundscape(1, "key");
+      else if (k === "[") this.stepSoundscape(-1, "key");
+      else if (k === "+" || k === "=") this.nudge("v.speed", 0.1, "key");
+      else if (k === "-" || k === "_") this.nudge("v.speed", -0.1, "key");
       else if (k === "x" || k === "backspace") this.toggleStop();
       else if (k === "p") this.store.set("freeze", !this.store.bool("freeze"));
       else if (k === "b") this.store.set("v.blank", !this.store.bool("v.blank"));
@@ -191,17 +272,20 @@ export class App {
 
   // --- actions -------------------------------------------------------------
   /** Ease: temporarily dimmer, slower and quieter, on top of the current settings, until pressed again */
-  toggleEase(): void {
+  toggleEase(via: "bar" | "key" = "bar"): void {
+    this.via = via;
     const on = !this.store.bool("ease");
     this.store.set("ease", on);
     this.ui.toast(on ? "Ease on: dimmer, slower and quieter" : "Ease off");
   }
-  nudge(key: string, delta: number): void {
+  nudge(key: string, delta: number, via: "bar" | "key" = "bar"): void {
+    this.via = via;
     this.store.set(key, this.store.num(key) + delta);
     const def = this.store.defs.get(key)!;
     this.ui.toast(`${def.label}: ${Math.round(((this.store.num(key) - def.min) / (def.max - def.min)) * 100)}`);
   }
-  stepPalette(d: number): void {
+  stepPalette(d: number, via: "bar" | "key" = "bar"): void {
+    this.via = via;
     const i = PALETTES.findIndex((p) => p.id === this.store.str("palette"));
     const next = PALETTES[(i + d + PALETTES.length) % PALETTES.length];
     this.store.set("palette", next.id);
@@ -211,6 +295,7 @@ export class App {
   toggleStop(): void {
     if (!this.started) return;
     this.stopped = !this.stopped;
+    analytics.track("control", { name: "stop", on: this.stopped });
     this.audio.setStopped(this.stopped);
     // a black screen may sleep; it wakes again on resume
     if (this.stopped) void this.letSleep(); else void this.keepAwake();
@@ -231,13 +316,15 @@ export class App {
   /** hide the control bar until asked for again; keys keep working */
   toggleBar(): void {
     const hidden = document.body.classList.toggle("bar-hidden");
+    analytics.track("control", { name: "hide-bar", on: hidden });
     if (hidden) this.ui.toast("Controls hidden. Press H or the corner mark to show them");
   }
   toggleFullscreen(): void {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen?.().catch(() => this.ui.toast("Full screen is not available here"));
   }
-  stepScene(d: number): void {
+  stepScene(d: number, via: "bar" | "key" = "bar"): void {
+    this.via = via;
     const i = SCENES.findIndex((s) => s.id === this.store.str("scene"));
     const next = SCENES[(i + d + SCENES.length) % SCENES.length];
     this.store.set("scene", next.id);
@@ -257,20 +344,30 @@ export class App {
     if (this.player.active) { this.ui.toast("Stop the replay first"); return; }
     const src: SignalSource = this.sources[id];
     const other: SignalSource = this.sources[id === "demo" ? "eeg" : "demo"];
-    if (src.status === "off") { if (other.status !== "off") other.disconnect(); src.connect(); }
-    else src.disconnect();
+    if (src.status === "off") {
+      if (other.status !== "off") other.disconnect();
+      src.connect();
+      this.inputSince = performance.now(); this.inputGood = 0; this.inputTicks = 0;
+      analytics.track("input", { action: "connect", source: id, mode: this.store.str("r.mode"), influence: Math.round(this.store.num("r.influence") * 100) });
+    } else {
+      src.disconnect();
+      analytics.track("input", { action: "disconnect", source: id, mode: this.store.str("r.mode"), influence: Math.round(this.store.num("r.influence") * 100),
+        minutes: Math.round((performance.now() - this.inputSince) / 60000), good_share: this.inputTicks ? Math.round((this.inputGood / this.inputTicks) * 100) : 0 });
+    }
   }
 
   toggleRecording(): void {
     if (this.recorder.active) {
       const f = this.recorder.stop();
       if (f) {
+        analytics.track("session", { action: "saved", minutes: Math.round(f.duration / 60), with_signals: f.containsBodySignals });
         const stamp = f.createdAt.replace(/[-:]/g, "").slice(0, 13);
         downloadJson(f, `sensory-session-${stamp}.json`);
         this.ui.toast(f.containsBodySignals ? "Session saved. It includes body-signal data: share it with care." : "Session saved to this device");
       }
     } else {
       this.recorder.start();
+      analytics.track("session", { action: "record" });
       this.ui.toast("Recording started");
     }
   }
@@ -280,6 +377,7 @@ export class App {
       if (this.recorder.active) this.recorder.stop();
       this.sources.eeg.disconnect(); this.sources.demo.disconnect();
       this.player.start(f);
+      analytics.track("session", { action: "replay", minutes: Math.round(f.duration / 60) });
       this.audio.reseed(f.seed);
       this.ui.refresh();
       this.ui.toast("Replaying session");
@@ -300,15 +398,17 @@ export class App {
   applySoundscape(id: string): void {
     const sc = SOUNDSCAPES.find((s) => s.id === id);
     if (!sc) return;
+    if (this.via !== "bar" && this.via !== "key") analytics.track("soundscape", { soundscape: id, via: "panel", from_custom: this.currentSoundscape() === null });
     for (const v of VOICES) this.store.set(`a.voice.${v.id}`, sc.layers[v.id] ?? 0);
     this.store.set("a.scale", sc.scale);
   }
   /** step through the named soundscapes; a hand-made mix is left for the first named one */
-  stepSoundscape(d: number): void {
+  stepSoundscape(d: number, via: "bar" | "key" = "bar"): void {
     const cur = this.currentSoundscape();
     const i = SOUNDSCAPES.findIndex((s) => s.id === cur);
     const next = cur === null ? SOUNDSCAPES[d > 0 ? 0 : SOUNDSCAPES.length - 1] : SOUNDSCAPES[(i + d + SOUNDSCAPES.length) % SOUNDSCAPES.length];
     this.applySoundscape(next.id);
+    analytics.track("soundscape", { soundscape: next.id, via, from_custom: cur === null });
     this.ui.toast(cur === null ? `${next.label} (the hand-made mix was replaced)` : `${next.label}: ${next.blurb}`);
   }
   currentProfile(): string | null {
@@ -316,15 +416,22 @@ export class App {
     return null;
   }
   resetDefaults(): void {
+    analytics.track("control", { name: "reset-defaults" });
     for (const d of this.store.defs.values()) this.store.set(d.key, d.def);
     this.store.set("scene", "aurora"); this.store.set("palette", "spectrum"); this.store.set("a.scale", "pentaMinor"); this.store.set("r.mode", "gentle");
     this.ui.toast("Everything is back to the defaults");
   }
 
   presets(): Record<string, Record<string, Value>> { return ls.get(LS_PRESETS, {}); }
-  savePreset(name: string): void { ls.set(LS_PRESETS, { ...this.presets(), [name]: this.store.snapshot() }); }
-  loadPreset(name: string): void { const p = this.presets()[name]; if (p) this.store.load(p, "user", (k) => TRANSIENT.has(k)); }
+  savePreset(name: string): void { ls.set(LS_PRESETS, { ...this.presets(), [name]: this.store.snapshot() }); analytics.track("session", { action: "setup-saved" }); }
+  loadPreset(name: string): void { const p = this.presets()[name]; if (p) { this.via = "panel"; this.store.load(p, "user", (k) => TRANSIENT.has(k)); analytics.track("session", { action: "setup-loaded" }); } }
   deletePreset(name: string): void { const p = this.presets(); delete p[name]; ls.set(LS_PRESETS, p); }
+
+  usageTab(name: string): void { analytics.track("settings", { tab: name }); }
+  usagePreset(id: string): void { analytics.track("preset", { preset: id, via: "panel" }); }
+  analyticsOn(): boolean { return analytics.isEnabled(); }
+  analyticsOptedOut(): boolean { return analytics.optedOut(); }
+  setAnalyticsOptOut(v: boolean): void { analytics.setOptOut(v); }
 
   // --- test hook -----------------------------------------------------------
   /** advance exactly n simulation steps, render one frame, return regional luminance */

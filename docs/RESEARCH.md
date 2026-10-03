@@ -346,6 +346,16 @@ For the public repository the owner asked for the control bar to carry Full scre
 
 Some autistic users found the fractal garden "spooky". On inspection it had three qualities the design otherwise avoids: a dark, speckled interior; fine, high-contrast edge detail that shimmered as the shape changed; and a form that never settled. Response: the fractal now keeps to a rounded, connected shape, uses few iterations so its edge is soft, and is lit and pale inside; it also moved towards the end of the list. Two calmer scenes in the spirit of immersive digital art were added: rolling waves drawn as flowing lines in the manner of Japanese woodblock seas, and fields of soft pulsing dots at many depths after the polka-dot infinity rooms of Yayoi Kusama. Both answer touch gently. Lesson recorded: fine high-contrast detail and dark voids read as unease even when nothing flashes; the brightness limiter does not address this, only design does.
 
+## 4g. Usage counting on the public site (2026-10-03)
+
+**Decision.** The public site keeps anonymous usage counts through a self-hosted, cookieless counter that accepts the Umami tracker format. Nothing is counted on copies people run themselves, on the internal installation or on preview addresses: the counter's id exists only in the public build, the script attaches only on the public host names, and the counter accepts only its allowed domain. Visitors with Do Not Track are left out, and About offers an opt-out stored on the device.
+
+**What is counted.** Page views with country, browser, operating system, device type and screen class (the counter keeps no addresses or user agents). Events about the work: Begin with the chosen profile, screen size and pixel ratio; scene, palette and soundscape changes with how they were made and how long the previous one was kept; layer and setting adjustments, debounced; the comfort controls (ease, stop, mute, hold still, picture off, hidden bar, full screen); automatic-change settings; touches aggregated once a minute; a pulse every two minutes while visible, for dwell time; a leave event with total minutes and scenes seen; one performance reading; and, in installations that include the Input feature, connect and disconnect of a source with the share of time the signal was usable.
+
+**What is never sent.** Signal values, session file contents, names people type, raw user agents. Exact screen size is sent because it tells a projection work which screens it is shown on; it is not combined with anything that could identify a person.
+
+**Why.** The project's audience makes privacy part of its character (2.7, D17), so an advertising-company analytics product with a consent banner was ruled out. The counts answer the questions that matter to a space for lingering: which scenes and sounds people stay with, how long they stay, and whether the comfort controls are found.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.

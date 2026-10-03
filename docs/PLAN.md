@@ -100,6 +100,10 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Settings tabs in one equal row; protocol link and GitHub mark in Help; default palette first
 - Public site at sensory-space.org on Cloudflare Pages
 
+## Done in version 0.7
+
+- Anonymous usage counting on the public site only, with a self-hosted cookieless counter; opt-out in About
+
 ## Next
 
 | Priority | Item |
