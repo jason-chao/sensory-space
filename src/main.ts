@@ -13,7 +13,7 @@ import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
 
-const VERSION = "0.4.1";
+const VERSION = "0.5.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "variation"]);
@@ -33,6 +33,7 @@ export class App {
   player: Player;
   sources: { eeg: EegBridgeSource; demo: DemoSource };
   panelEl: HTMLElement | null = null;
+  readonly version = VERSION;
   ui!: Ui;
   private started = false;
   stopped = false;

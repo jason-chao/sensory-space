@@ -152,9 +152,9 @@ A second strand asked which browser technologies fit: rendering, audio, device c
 
 Each decision lists its reason and where it is implemented.
 
-### D1. Leisure framing, no therapeutic claims
+### D1. Art framing, no therapeutic claims
 **Because** evidence for therapeutic effect is weak (2.1) and medical claims change the regulatory status (2.7).
-**In practice**: the app describes itself as for relaxation and enjoyment and states that it is not a medical device or a treatment (start screen and Session tab).
+**In practice**: the project presents itself as an art project of light and sound, made with care for autistic adults. It makes no claim to treat or improve anything. An earlier version carried an explicit "not a medical device" statement; on 2026-10-03 the owner chose the art framing instead, and the statement was removed. The regulatory analysis in 2.7 still applies: it is the absence of medical claims that keeps the work outside device rules, not the disclaimer.
 
 ### D2. The person holds the controls
 **Because** user control is the best-supported design factor (2.1) and sensory needs differ and vary (2.2).
@@ -337,6 +337,10 @@ Before making the repository public, the owner asked for the EEG source to be re
 | Base it on an open, existing standard where possible. | The protocol carries Lab Streaming Layer's stream model unchanged, so any device with an LSL connector can be relayed. |
 
 Compatibility with the first bridge's format was dropped by decision; that bridge will be updated to the protocol.
+
+## 4e. Public release (2026-10-03)
+
+For the public repository the owner asked for the control bar to carry Full screen instead of Stop (Stop remains on the `X` key and in the settings header), for the project to be presented as an art project with the author named, and for the README to show the work itself: stills and a short animation rendered by the engine. All images in the README come from the real renderer, in software rendering, with scenes and palettes chosen by hand; none are photographs of a room.
 
 ## 5. What is not yet known or not yet done
 

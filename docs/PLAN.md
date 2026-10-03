@@ -88,6 +88,12 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 
 - Soundscape stepper in the control bar, so sound gets the same treatment as picture
 
+## Done in version 0.5 (public release)
+
+- Full screen in the control bar in place of Stop; Stop stays on `X` and in the settings header
+- Art framing: tagline, About section with the author, no disclaimer text
+- README with engine-rendered stills and an animation
+
 ## Next
 
 | Priority | Item |

@@ -413,17 +413,25 @@ vec2 field(vec2 p,float t){
   for(int k=0;k<8;k++){
     if(uTouch[k].z<0.) continue;
     vec2 d=p-uTouch[k].xy; float r=length(d);
-    v+=d/max(r,.05)*.7*smoothstep(.6,0.,r)*exp(-uTouch[k].z/4.);
+    v+=d/max(r,.08)*.35*smoothstep(.7,0.,r)*exp(-uTouch[k].z/4.);
   }
   return v*(.3+.9*uA);
 }
 vec3 scene(vec2 p,float t){
   vec2 v=field(p,t);
-  vec3 prev=texture(uPrev,toUv(p-v*uDt*1.5)).rgb;
+  vec2 su=toUv(p-v*uDt*1.5);
+  // beyond the edge there is nothing to carry in; a small constant fade stops faint haze from lingering
+  vec3 prev=(su.x<0.||su.x>1.||su.y<0.||su.y>1.)?vec3(0.):max(texture(uPrev,su).rgb-.25*uDt,0.);
+  // pushing light outward also spreads it thin: fade it where a touch is parting the water
+  float part=0.;
+  for(int k=0;k<8;k++){ if(uTouch[k].z<0.) continue; part+=6.*smoothstep(.7,0.,length(p-uTouch[k].xy))*exp(-uTouch[k].z/4.); }
+  prev*=exp(-uDt*part);
   float n=8.+8.*uDensity; vec2 q=p*n; vec2 id=floor(q); float slice=floor(t*2.);
   vec2 h=h22(id+slice*.37+uSeed);
   float on=step(.92,h.x)*smoothstep(0.,.2,fract(t*2.));
-  float d=length(q-(id+.5+(h-.5)*.8));
+  // the light is laid down along the distance it travelled this frame, so trails stay continuous
+  vec2 e=id+.5+(h-.5)*.8; vec2 e2=e-v*uDt*1.5*n; vec2 ab=e2-e;
+  float u=clamp(dot(q-e,ab)/max(dot(ab,ab),1e-6),0.,1.); float d=length(q-e-ab*u);
   vec3 c=prev*exp(-uDt*1.1)+pal(.3+.4*h.y+p.y*.2)*on*smoothstep(.14,0.,d)*1.4;
   return max(c,pal(.6)*.03);
 }`,

@@ -13,4 +13,6 @@ export const ICONS = {
   show: svg('<path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/>'),
   close: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   record: svg('<circle cx="12" cy="12" r="6"/>'),
+  fullscreen: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+  exitFullscreen: svg('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'),
 };

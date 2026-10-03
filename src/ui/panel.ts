@@ -213,7 +213,11 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       key("← →", "previous or next scene"), key("C V", "next or previous colours"), key("+ −", "motion faster or slower"),
       key("[ ]", "previous or next soundscape"), key("↑ ↓", "volume up or down"), key("E", "ease on or off"), key("X", "stop at once, or resume"), key("M", "mute"),
       key("P", "hold still"), key("B", "picture off"), key("F", "full screen"), key("S", "settings"), key("H", "hide or show the bar"))),
-    section("about", "About", el("p", { class: "hint" }, "Sensory Space is for relaxation and enjoyment. It is not a medical device and not a treatment. Brightness changes are rate-limited by design, which lowers risk but cannot remove it. If you are sensitive to light or pattern, start with the Gentle intensity and a dim room light on.")),
+    section("about", "About",
+      el("p", {}, el("strong", {}, "Sensory Space"), " ", el("span", { class: "hint" }, `version ${app.version}`)),
+      el("p", { class: "hint" }, "Slow light, living sound, room to linger. A generative art project of light and sound for a projector in a dim room, or a screen at home. Everything is generated live in this browser."),
+      el("p", { class: "hint" }, "By Jason Chao. Designed with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound are yours to set. Brightness changes are rate-limited by design, which lowers risk but cannot remove it; if you are sensitive to light or pattern, start with Gentle."),
+      el("p", { class: "hint" }, el("a", { href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener" }, "github.com/jason-chao/sensory_space"), " · PolyForm Internal Use licence")),
   );
 
   // ---------------------------------------------------------------- panel and tabs
@@ -250,6 +254,13 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   });
   const easeBtn = action("ease", "Ease", { title: "Dimmer, slower and quieter until pressed again (E)", onclick: () => app.toggleEase() });
   syncers.push(() => { easeBtn.classList.toggle("on", store.bool("ease")); easeBtn.setAttribute("aria-pressed", String(store.bool("ease"))); });
+  const fsBtn = action("fullscreen", "Full screen", { title: "Full screen (F). Esc leaves it", onclick: () => app.toggleFullscreen() });
+  const syncFs = () => {
+    const on = !!document.fullscreenElement;
+    fsBtn.replaceChildren(icon(on ? "exitFullscreen" : "fullscreen"), el("span", { class: "lbl" }, on ? "Exit" : "Full screen"));
+    fsBtn.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
+  };
+  document.addEventListener("fullscreenchange", syncFs);
   const recInd = el("span", { class: "rec" }, "● rec");
   const bar = el("div", { class: "bar", role: "toolbar", "aria-label": "Controls" },
     group("Scene", step("prev", "Previous scene", () => app.stepScene(-1)), sceneName, step("next", "Next scene", () => app.stepScene(1))),
@@ -259,7 +270,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     group("Volume", step("minus", "Quieter", () => app.nudge("a.volume", -0.05)), volVal, step("plus", "Louder", () => app.nudge("a.volume", 0.05)), "narrow-hide"),
     el("div", { class: "acts" },
       easeBtn,
-      action("stop", "Stop", { title: "Black and silent at once (X)", onclick: () => app.toggleStop() }),
+      fsBtn,
       action("settings", "Settings", { title: "Settings (S)", onclick: () => app.togglePanel() }),
       action("hide", "Hide", { title: "Hide these controls (H)", onclick: () => app.toggleBar() })),
     recInd);
@@ -325,9 +336,9 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       const pick = (id: string) => { chosen = id; profBtns.forEach((b, i) => b.classList.toggle("on", PROFILES[i].id === id)); };
       const start = el("div", { class: "start" }, el("div", { class: "card" },
         el("h1", {}, "Sensory Space"),
-        el("p", {}, "Slow light and sound to relax with. Everything can be changed, and nothing changes suddenly."),
+        el("p", {}, "Slow light, living sound, room to linger. Everything can be changed, and nothing changes suddenly."),
         el("div", { class: "note" },
-          "Set the room volume low on your speakers first: sound starts quietly and rises over a few seconds. Light changes are slowed by design, which lowers risk but cannot remove it. If you are sensitive to light or pattern, choose Gentle. Press ",
+          "Set the room volume low on your speakers first: sound starts quietly and rises over a few seconds. Light changes are slowed by design. If you are sensitive to light or pattern, choose Gentle. Press ",
           el("kbd", {}, "E"), " for ease (dimmer, slower, quieter) or ", el("kbd", {}, "X"), " to stop at once (black and silent)."),
         el("div", { class: "row grid3" }, ...profBtns),
         el("div", { class: "row" }, el("label", {}, fs, "Open in full screen")),
