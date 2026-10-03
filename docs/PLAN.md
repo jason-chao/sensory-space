@@ -27,7 +27,7 @@ Last updated: 2026-10-02. Research, reasoning and sources are in [RESEARCH.md](R
 | Recording | Session file first. Shareable video later |
 | Sound sources | Synthesis, and public-domain material where useful |
 | User feedback | After the first version ships |
-| Licence | PolyForm Internal Use, for now |
+| Licence | MIT |
 | Scenes | As many as practical |
 
 ## Architecture

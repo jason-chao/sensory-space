@@ -215,9 +215,9 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       key("P", "hold still"), key("B", "picture off"), key("F", "full screen"), key("S", "settings"), key("H", "hide or show the bar"))),
     section("about", "About",
       el("p", {}, el("strong", {}, "Sensory Space"), " ", el("span", { class: "hint" }, `version ${app.version}`)),
-      el("p", { class: "hint" }, "Slow light, living sound, room to linger. A generative art project of light and sound for a projector in a dim room, or a screen at home. Everything is generated live in this browser."),
+      el("p", { class: "hint" }, "Slow light, living sound, room to linger. A generative art project of light and sound for any screen, from a projected wall to a laptop. Everything is generated live in this browser."),
       el("p", { class: "hint" }, "By Jason Chao. Designed with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound are yours to set. Brightness changes are rate-limited by design, which lowers risk but cannot remove it; if you are sensitive to light or pattern, start with Gentle."),
-      el("p", { class: "hint" }, el("a", { href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener" }, "github.com/jason-chao/sensory_space"), " · PolyForm Internal Use licence")),
+      el("p", { class: "hint" }, el("a", { href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener" }, "github.com/jason-chao/sensory_space"), " · MIT licence")),
   );
 
   // ---------------------------------------------------------------- panel and tabs

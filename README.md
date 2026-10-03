@@ -5,7 +5,7 @@
 <h1 align="center">Sensory Space</h1>
 <p align="center"><em>Slow light, living sound, room to linger.</em></p>
 
-Light drifts, sound gathers, and a touch makes a bloom and a note. Sensory Space is a slow, generative artwork of light and sound for a projector in a dim room, or a screen at home. It runs in a web browser and is generated live, so no two minutes are the same. Twenty scenes explore colour and pattern, with synthesised soundscapes beside them. Made with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound belong to the person in the room.
+Light drifts, sound gathers, and a touch makes a bloom and a note. Sensory Space is a slow, generative artwork of light and sound for any screen: a projected wall, a large television, or the laptop on your desk. It runs in a web browser and is generated live, so no two minutes are the same. Twenty scenes explore colour and pattern, with synthesised soundscapes beside them. Made with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound belong to the person in the room.
 
 <p align="center">
   <img src="docs/images/collage.jpg" width="100%" alt="Eight scenes: aurora, ink in water, kaleidoscope, flowers, water of light, sea glass, light lattice, resonating lamps">
@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Open the address it prints, press **Begin**, then **Full screen**. Dim the room, set the speakers low, and stay awhile.
+Open the address it prints, press **Begin**, then **Full screen**. Lower the lights if you can, keep the sound soft, and stay awhile.
 
 Or run the published container (section *In a room* below), or open the static build on any web host.
 
@@ -78,22 +78,28 @@ Touch or click the picture: a bloom of light opens and a note sounds. Left to ri
 - **Nothing changes suddenly.** Every control is followed smoothly. Scenes and palettes cross-fade over six seconds. Sound rises over five.
 - **Light is rate-limited by design.** The last stage before the screen limits how fast the brightness of any region may change, whatever a scene, a setting or an input asks for. This keeps the work well inside published flash limits. An automated check drives the renderer through worst cases and fails if it ever sees more than three flashes a second.
 - **Ease and Stop.** `E` makes everything dimmer, slower and quieter until pressed again. `X` goes to black and silence at once.
-- **Private.** Nothing leaves the browser. Signals from a device stay on the machine unless you choose to record a session with them.
+- **Private.** Everything happens in the browser. Nothing is sent anywhere.
 
 The reasoning, the evidence and the decisions are written up in [docs/RESEARCH.md](docs/RESEARCH.md).
 
-## In a room
+## On any screen
 
-A projector on a plain wall, a dim room and a pair of decent speakers are enough. Press `F` for full screen and `H` to hide the controls. The bar and the pointer hide by themselves after a few seconds.
+Sensory Space works on whatever you have. The bigger the picture, the more it surrounds you, but a small screen still makes a quiet window to look into.
 
-To serve it from a small computer in the room, with a secure address and an EEG bridge on the same origin:
+- **A projector** on a plain wall or a ceiling gives the most immersive result.
+- **A large television** works beautifully from a sofa. Connect a laptop, or open the page in the television's own browser.
+- **A computer, tablet or phone** works too, full screen or in a window beside your work.
+
+Lower the lights if you can. Built-in speakers are fine; headphones or a pair of good speakers bring out the sound. Press `F` for full screen and `H` to hide the controls. The bar and the pointer hide by themselves after a few seconds.
+
+To serve it from a small computer for a room, a gallery or a shared space:
 
 ```bash
 cp .env.example .env     # ports, https address, bridge upstream
 docker compose up -d --build
 ```
 
-Browsers will ask you to accept the self-signed certificate once. Export its root certificate to trust it everywhere:
+The container serves the app over http and https. Browsers will ask you to accept its self-signed certificate once. Export its root certificate to trust it everywhere:
 
 ```bash
 docker exec sensory-space cat /data/caddy/pki/authorities/local/root.crt > sensory-space-root.crt
@@ -119,15 +125,13 @@ For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH`
 | `S` | Settings |
 | `H` | Hide or show the control bar |
 
-## Reactive input
-
-Optional. Any EEG device can take part through a bridge that speaks the [EEG bridge protocol](docs/EEG-BRIDGE-PROTOCOL.md), a WebSocket carrying Lab Streaming Layer stream descriptions. The minimum is one raw EEG stream; band powers and signal quality are computed in the browser. Signals gently tint colour, detail and tone within bounded limits. Nothing is scored, nothing speeds up when you are tense, and with a weak or missing signal the space simply carries on. Try it without hardware with **Try demo signals**.
-
-Developers: copy `.env.example` to `.env.local`, set `EEG_BRIDGE_UPSTREAM`, and the dev server forwards `/bridge/eeg`.
-
 ## Keep a session
 
-Recording is off unless you start it. A session is a small file of settings, changes and, if you choose, the signals that shaped it. Sensory Space replays it later, regenerating the same light and sound from the same seed.
+Recording is off unless you start it. A session is a small file of your settings and changes. Sensory Space replays it later, regenerating the same light and sound from the same seed.
+
+## For the curious: body signals
+
+Entirely optional, and nothing else depends on it. If you happen to have an EEG headband, a small bridge program can let its signals gently tint the colours and tone. Nothing is scored and nothing speeds up when you are tense. The bridge speaks an open format based on Lab Streaming Layer, described in [docs/EEG-BRIDGE-PROTOCOL.md](docs/EEG-BRIDGE-PROTOCOL.md), and **Try demo signals** shows the idea without any hardware.
 
 ## For makers
 
@@ -142,7 +146,7 @@ node scripts/shots.mjs shots  # a still of every scene
 - **A scene** is one GLSL function of position and time in `src/visual/scenes.ts`. It needs no safety code of its own.
 - **A sound layer** is a factory in `src/audio/engine.ts` and a line in `src/audio/voicelist.ts`.
 - **A soundscape** or an **intensity preset** is a few lines in `src/core/params.ts`.
-- **A device** is a bridge speaking the protocol, or a `SignalSource` in `src/signals/sources.ts`.
+- **An input device** is a bridge speaking the protocol, or a `SignalSource` in `src/signals/sources.ts`. For development, set `EEG_BRIDGE_UPSTREAM` in `.env.local` and the dev server forwards `/bridge/eeg`.
 
 ```
 src/core      simulation clock, parameters, seeded randomness
@@ -156,6 +160,6 @@ docs          research and decisions, plan, protocol
 
 ## Author and licence
 
-Sensory Space is by **Jason Chao**. Released under the PolyForm Internal Use License 1.0.0 ([LICENSE.md](LICENSE.md)).
+Sensory Space is by **Jason Chao**. Released under the [MIT License](LICENSE).
 
-Give it a wall, dim the room, and stay awhile.
+Give it a wall or a screen, lower the lights, and stay awhile.
