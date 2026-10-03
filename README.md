@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/hero.gif" width="100%" alt="Ink in water: colour unfolding slowly across the whole frame">
+  <img src="docs/images/hero.gif" width="100%" alt="Kaleidoscope dissolving into ink in water, then into sea glass, in the soft spectrum palette">
 </p>
 
 <h1 align="center">Sensory Space</h1>
