@@ -358,6 +358,10 @@ Some autistic users found the fractal garden "spooky". On inspection it had thre
 
 **Why.** The project's audience makes privacy part of its character (2.7, D17), so an advertising-company analytics product with a consent banner was ruled out. The counts answer the questions that matter to a space for lingering: which scenes and sounds people stay with, how long they stay, and whether the comfort controls are found.
 
+## 4h. Direct influence (2026-10-03)
+
+Users asked why a tap only made a note and a bloom while the elements carried on unmoved, and pointed to immersive digital art where touching something changes its course. Response: the engine now keeps the last few seconds of a press-and-drag as a wake, and every scene answers it in its own physical nature (lava follows a hand and splits; drifting elements part and return; colour stirs; threads bend; water flows along the path; lamps and the lattice light the path; the sea swells lift). The owner chose press-and-drag only, with no response to a hovering mouse, and a clearly visible strength. Displacements are capped at about a hand's width, so nothing is flung away, and the wake fades in about a second so the picture returns to rest. Drags are recorded in session files like taps and are counted in usage as seconds of dragging. The flash check gained a fast back-and-forth drag case, which passes. On phones the control bar now reflows into two rows that fit the width, after users saw it cropped.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.

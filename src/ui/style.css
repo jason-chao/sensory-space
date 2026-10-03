@@ -140,3 +140,17 @@ kbd { background: rgba(255, 255, 255, 0.1); border-radius: 5px; padding: 1px 7px
 .toast { transition: none; } }
 /* the panel header carries Stop and Close, so the bar steps aside while it is open */
 body:has(.panel.open) .bar { opacity: 0; pointer-events: none; }
+
+/* phones: the bar becomes two rows that fit the width, steppers above, actions below */
+@media (max-width: 760px) {
+  .bar { flex-wrap: wrap; width: calc(100vw - 16px); max-width: none; justify-content: center; row-gap: 6px; padding: 6px; gap: 0; }
+  .grp { flex: 1 1 0; min-width: 0; padding: 0 2px; border-right: 1px solid var(--line); }
+  .grp:nth-of-type(3) { border-right: none; }
+  .grp .row { width: 100%; justify-content: center; }
+  .grp .val { width: auto; flex: 1 1 0; min-width: 0; font-size: 0.78rem; }
+  .stp { min-width: 34px; min-height: 36px; padding: 4px; }
+  .acts { flex-basis: 100%; justify-content: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .act { width: 60px; height: 44px; }
+  .act .lbl { display: block; font-size: 0.66rem; }
+  .bar .rec { flex-basis: 100%; justify-content: center; }
+}

@@ -44,6 +44,7 @@ export function defineParams(store: Store): void {
   store.init("freeze", false);
   store.init("v.blank", false);
   store.init("touch", "");
+  store.init("drag", "");
   store.init("a.mute", false);
 }
 

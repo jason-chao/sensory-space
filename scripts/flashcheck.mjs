@@ -22,6 +22,7 @@ const cases = {
   "pattern replaced abruptly at 6 Hz, limiter alone": `(s, f) => { if (f % 10 === 0) s.sim.visSeedA = (f * 7.919) % 100; }`,
   "touch at a random place every frame": `(s, f) => { s.store.set("touch", ((f * 0.37) % 1).toFixed(3) + "," + ((f * 0.61) % 1).toFixed(3) + "," + f); }`,
   "calm, sound-only and hold-still toggled every 5 frames": `(s, f) => { if (f % 5 === 0) { s.store.set("calm", (f / 5) % 2 === 0); s.store.set("v.blank", (f / 5) % 3 === 0); s.store.set("freeze", (f / 5) % 2 === 1); } }`,
+  "fast drag back and forth every frame": `(s, f) => { s.store.set("scene", "lava"); s.store.set("drag", (0.5 + 0.45 * Math.sin(f * 0.8)).toFixed(3) + "," + (0.5 + 0.4 * Math.cos(f * 0.6)).toFixed(3) + "," + f); }`,
   "all controls randomised every 2 frames": `(s, f) => { if (f % 2 === 0) for (const d of s.store.defs.values()) if (d.key.startsWith("v.") || d.key.startsWith("sc.")) s.store.set(d.key, d.min + (d.max - d.min) * ((Math.sin(f * 12.9898 + d.key.length * 78.233) * 43758.5453) % 1 + 1) % 1); }`,
   "palette switched every 2 frames, vivid": `(s, f) => { s.store.set("v.brightness", 1); s.store.set("v.saturation", 1); const p = ["sunset", "moon", "ember", "pastel", "deepsea"]; if (f % 2 === 0) s.store.set("palette", p[(f / 2) % p.length]); }`,
 };

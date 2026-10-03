@@ -35,9 +35,46 @@ uniform vec3 uPal[4];
 uniform vec4 uTouch[8]; // x, y (same units as p), age in seconds, unused; age < 0 = empty
 uniform sampler2D uPrev; // previous frame of this scene (feedback scenes only)
 uniform float uDt;      // seconds since the previous frame
+uniform vec4 uTrail[24]; // where a finger has been dragged: x, y, age in seconds, speed
+uniform vec2 uTrailV[24]; // its velocity there
+uniform int uTrailN;
 out vec4 outColor;
 float asp;
 vec2 toUv(vec2 p){ return vec2(p.x/asp+.5,p.y+.5); }
+// --- the finger's wake. Scenes use these so that dragging has a physical, predictable effect.
+// how strongly the recent drag touches p (0..1), fading with age
+float wake(vec2 p,float radius){
+  float m=0.;
+  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; float d=length(p-s.xy);
+    m=max(m,exp(-d*d/(radius*radius))*exp(-s.z/1.2)); }
+  return m;
+}
+// displacement that pushes things away from the finger's path and along its direction of travel
+vec2 wakePush(vec2 p,float radius,float strength){
+  vec2 d=vec2(0.);
+  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; vec2 r=p-s.xy; float dist=length(r);
+    float w=exp(-dist*dist/(radius*radius))*exp(-s.z/1.2);
+    d+=(r/max(dist,1e-3))*w*strength+uTrailV[i]*w*strength*.35; }
+  float l=length(d); return l>strength*1.5?d*(strength*1.5/l):d;   // never more than a hand's width
+}
+// pull towards the finger's most recent positions (for things that follow a hand)
+vec2 wakePull(vec2 p,float radius,float strength){
+  vec2 d=vec2(0.);
+  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; vec2 r=s.xy-p; float dist=length(r);
+    float w=exp(-dist*dist/(radius*radius))*exp(-s.z/.8);
+    d+=r*w*strength; }
+  return d;
+}
+// a swirl around the finger's path, turning in the direction it moved (for stirring colour)
+vec2 wakeSwirl(vec2 p,float radius,float strength){
+  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; vec2 r=p-s.xy; float dist=length(r);
+    float w=exp(-dist*dist/(radius*radius))*exp(-s.z/1.5);
+    vec2 v=uTrailV[i]; float side=sign(v.x*r.y-v.y*r.x+1e-6);
+    float a=w*strength*side*min(1.,s.w);
+    float c=cos(a), sn=sin(a); p=s.xy+mat2(c,-sn,sn,c)*r; }
+  return p;
+}
+
 vec3 pal(float t){ return clamp(uPal[0]+uPal[1]*cos(6.28318*(uPal[2]*t+uPal[3])),0.,1.); }
 float h11(float n){ return fract(sin(n*127.1+3.3)*43758.5453); }
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
@@ -60,6 +97,7 @@ export const SCENES: SceneDef[] = [
     a: { label: "Curtain height", def: 0.5 },
     glsl: `
 vec3 scene(vec2 p,float t){
+  p+=wakePush(p,.25,.07);
   vec3 c=mix(vec3(.01,.015,.04),vec3(.03,.05,.09),smoothstep(-.5,.5,p.y));
   vec2 g=p*38.; vec2 id=floor(g); float st=h21(id+uSeed);
   vec2 f=fract(g)-.5-(h22(id)-.5)*.6;
@@ -86,6 +124,7 @@ vec3 scene(vec2 p,float t){
     float fi=float(i); float w=clamp(uDensity*10.+2.-fi,0.,1.); if(w<=0.) break;
     vec2 h=h22(vec2(fi*1.3+.7,uSeed+2.1));
     vec2 c=vec2((h.x-.5)*1.05*asp+.22*sin(t*.11*(.6+h.y)+fi*2.),.62*sin(t*(.05+.06*h.x)+fi*1.7+h.y*6.28));
+    c+=wakePull(c,.4,.3);   // blobs follow a hand, stretch between where it was and where it is, and split
     float r=(.10+.10*h.y)*(.7+.6*uA);
     f+=w*r*r/(dot(p-c,p-c)+1e-4);
   }
@@ -109,6 +148,8 @@ vec3 scene(vec2 p,float t){
       vec2 o=vec2(x,y); vec2 h=h22(id+o+fl*31.);
       float present=smoothstep(h.x-.05,h.x+.05,.2+.75*uDensity);
       vec2 pos=o+.5+.38*vec2(sin(t*(.2+.3*h.x)+h.y*6.28),cos(t*(.17+.25*h.y)+h.x*6.28));
+      vec2 wp=(id+pos-vec2(t*.02*(fl+1.),fl*10.+uSeed))/sc;   // world position of this firefly
+      pos+=wakePush(wp,.28,.11)*sc;                                 // nudged aside by a passing finger
       float d=length(fq-pos);
       float tw=.45+.55*sin(uTime*(.25+.5*h.y)+h.x*40.); tw*=tw;
       float s=.07*(.5+1.2*uA);
@@ -130,6 +171,7 @@ float web(vec2 p,float t){
   return pow(r,14.);
 }
 vec3 scene(vec2 p,float t){
+  p=wakeSwirl(p,.25,.7);
   float sc=1.6+2.6*uDensity;
   float a=web(p*sc,t), b=web(p*sc*1.4+7.,t*1.3);
   float c=min(a,b)*1.6+.5*a*b+.12*(a+b);
@@ -142,6 +184,7 @@ vec3 scene(vec2 p,float t){
     a: { label: "Depth", def: 0.5 },
     glsl: `
 vec3 scene(vec2 p,float t){
+  p=wakeSwirl(p,.28,.7);
   vec2 q0=p*(.9+1.8*uDensity)+uSeed;
   vec2 q=vec2(fbm(q0+vec2(0.,t*.05)),fbm(q0+vec2(5.2,1.3)-t*.04));
   vec2 r=vec2(fbm(q0+3.5*q+vec2(1.7,9.2)+t*.03),fbm(q0+3.5*q+vec2(8.3,2.8)-t*.025));
@@ -157,6 +200,7 @@ vec3 scene(vec2 p,float t){
     a: { label: "Guide ring", def: 0.5 },
     glsl: `
 vec3 scene(vec2 p,float t){
+  p+=wakePush(p,.3,.06);
   float b=uBreath; float R=.15+.17*b; float d=length(p);
   vec3 c=pal(.6+.1*d)*(.05+.05*b);
   float core=smoothstep(R,R*.15,d);
@@ -173,6 +217,7 @@ vec3 scene(vec2 p,float t){
     a: { label: "Cloud glow", def: 0.5 },
     glsl: `
 vec3 scene(vec2 p,float t){
+  p+=wakePush(p,.25,.06);
   vec2 dr=vec2(t*.01,t*.004);
   float n=fbm(p*1.2+dr*2.+uSeed); float n2=fbm(p*2.5-dr*3.+n);
   vec3 c=pal(.2+.5*n)*pow(n2,2.)*.8*(.3+1.2*uA)+vec3(.008,.01,.025);
@@ -219,7 +264,9 @@ vec3 scene(vec2 p,float t){
       float present=smoothstep(h.x-.05,h.x+.05,.2+.75*uDensity);
       float yy=fract(h.x*7.+t*(.03+.05*h.y))*1.7-.85;
       float r=(.12+.22*h.y)*(.6+.8*uA);
-      vec2 dv=q-vec2(id+.5+.25*sin(t*.3*(1.+h.x)+h.y*6.),yy*sc);
+      vec2 bc=vec2(id+.5+.25*sin(t*.3*(1.+h.x)+h.y*6.),yy*sc);
+      bc+=wakePush((bc-vec2(fl*3.3+uSeed,0.))/sc,.3,.12)*sc;
+      vec2 dv=q-bc;
       float d=length(dv);
       float inside=smoothstep(r,r*.92,d);
       float rim=inside*smoothstep(r*.55,r,d);
@@ -241,6 +288,7 @@ vec3 scene(vec2 p,float t){
     float fi=float(i); float w=clamp(uDensity*12.+2.-fi,0.,1.); if(w<=0.) break;
     vec2 h=h22(vec2(fi*1.7+.3,uSeed+.9)); vec2 h2=h22(vec2(uSeed+3.,fi*2.3+.1));
     vec2 ctr=vec2((h.x-.5)*1.1*asp+.2*sin(t*.05*(1.+h.y)+fi),(h.y-.5)*.9+.15*cos(t*.04*(1.+h.x)+fi*2.));
+    ctr+=wakePush(ctr,.4,.16);
     float r=(.08+.2*h2.x)*(.6+.8*uA); float d=length(p-ctr);
     float disc=smoothstep(r,r*.88,d); float edge=smoothstep(r*.8,r,d)*disc;
     float pulse=.6+.4*sin(uTime*(.1+.15*h2.y)+fi*3.);
@@ -264,6 +312,7 @@ vec3 fold(vec2 p,float t,float n){
   return c*smoothstep(1.5,.2,r);
 }
 vec3 scene(vec2 p,float t){
+  p=wakeSwirl(p,.3,.8);
   // the mirror count changes by cross-fading, never by a jump
   float m=4.+uA*8.; float n=floor(m); float k=smoothstep(.35,.65,fract(m));
   vec3 c=fold(p,t,n);
@@ -281,6 +330,7 @@ vec3 scene(vec2 p,float t){
     float fi=float(i); float w=clamp(uDensity*9.+1.5-fi,0.,1.); if(w<=0.) break;
     float h=h11(fi+uSeed);
     float y=(h-.5)*.75+.12*sin(p.x*(1.2+h)+t*(.12+.1*h)+fi)+.07*sin(p.x*2.7-t*.09+fi*2.)+.03*(.3+uA)*sin(p.x*6.+t*.2+fi*5.);
+    y+=wakePush(vec2(p.x,y),.28,.14).y;   // lines bend away from a hand like water plants
     float d=abs(p.y-y);
     float g=.0035/(d+.0035)*.55+exp(-d*18.)*.18;
     c+=w*pal(.1*fi+.15*p.x+t*.01)*g*.5;
@@ -293,6 +343,7 @@ vec3 scene(vec2 p,float t){
     a: { label: "Edge softness", def: 0.5 },
     glsl: `
 vec3 scene(vec2 p,float t){
+  p+=wakePush(p,.22,.08);
   vec2 q=p*(2.2+4.5*uDensity)+uSeed; vec2 id=floor(q), f=fract(q);
   float d1=9.,d2=9.; vec2 cid=id;
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
@@ -310,6 +361,7 @@ vec3 scene(vec2 p,float t){
     a: { label: "Texture", def: 0.3 },
     glsl: `
 vec3 scene(vec2 p,float t){
+  p=wakeSwirl(p,.3,.5);
   float n=fbm(p*(.4+1.2*uA)+vec2(t*.03,-t*.02)+uSeed);
   float g=p.y*.35+.5+.5*(n-.5);
   return pal(g*.6+t*.008)*(.5+.3*n)*(.5+.5*uDensity);
@@ -329,7 +381,7 @@ vec3 scene(vec2 p,float t){
       float present=smoothstep(h.x-.05,h.x+.05,.2+.5*uDensity);
       vec2 lp=cid+.5+(h-.5)*.5; vec2 wp=(lp-off)/sc;
       vec2 d=q-lp-vec2(.02*sin(t*.5+h.y*6.28),0.); d.y*=.6; float r=length(d);
-      float glow=0.;
+      float glow=wake(wp,.22)*1.2;
       for(int k=0;k<8;k++){
         float age=uTouch[k].z; if(age<0.) continue;
         float dist=length(wp-uTouch[k].xy); float xx=age-dist/.4; if(xx<0.) continue;
@@ -360,7 +412,9 @@ vec3 scene(vec2 p,float t){
   for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
     vec2 cid=id+vec2(x,y); vec2 h=h22(cid);
     float P=22.+20.*h.y; float tt=t/P+h.x; float cyc=floor(tt); float ph=fract(tt);
-    vec2 h2=h22(cid+cyc*3.7); vec2 ctr=cid+.5+(h2-.5)*.6; vec2 d=q-ctr;
+    vec2 h2=h22(cid+cyc*3.7); vec2 ctr=cid+.5+(h2-.5)*.6;
+    ctr+=wakePush((ctr-uSeed)/sc,.25,.09)*sc;
+    vec2 d=q-ctr;
     float k=4.+floor(h2.x*4.);
     float R=(.12+.25*h2.y)*(.5+uA)*smoothstep(0.,.25,ph)*(1.-smoothstep(.58,.66,ph));
     if(R>.001){
@@ -373,6 +427,7 @@ vec3 scene(vec2 p,float t){
       for(int i=0;i<6;i++){
         float fi=float(i); float ang=fi*1.047+h2.x*6.28; vec2 dir=vec2(cos(ang),sin(ang));
         vec2 pp=ctr+dir*(.15+.5*s)+vec2(.3*s*s*(h.x-.3),.25*s)+.05*sin(vec2(t*1.3+fi,t*1.1+fi*2.));
+        pp+=wakePush((pp-uSeed)/sc,.3,.25)*sc;
         for(int kk=0;kk<8;kk++){
           if(uTouch[kk].z<0.) continue;
           vec2 dd=pp-(uTouch[kk].xy*sc+uSeed); float dist=length(dd);
@@ -398,6 +453,7 @@ vec2 field(vec2 p,float t){
     vec2 d=p-uTouch[k].xy; float r=length(d);
     v+=d/max(r,.08)*.35*smoothstep(.7,0.,r)*exp(-uTouch[k].z/4.);
   }
+  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; float d=length(p-s.xy); v+=uTrailV[i]*1.2*exp(-d*d/.03)*exp(-s.z/1.5); }   // a drag becomes a current
   return v*(.3+.9*uA);
 }
 vec3 scene(vec2 p,float t){
@@ -425,6 +481,7 @@ vec3 scene(vec2 p,float t){
     glsl: `
 float segd(vec2 p,vec2 a,vec2 b,out float u){ vec2 ab=b-a; u=clamp(dot(p-a,ab)/max(dot(ab,ab),1e-6),0.,1.); return length(p-a-ab*u); }
 vec3 scene(vec2 p,float t){
+  p+=wakePush(p,.22,.08);
   vec3 c=pal(.6)*.05+.02*fbm(p*3.+uSeed);
   for(int j=0;j<6;j++){
     float fj=float(j); float w=clamp(uDensity*6.+2.-fj,0.,1.); if(w<=0.) break;
@@ -459,7 +516,7 @@ vec3 scene(vec2 p,float t){
     vec3 w3=vec3((id-vec2(uSeed+fl*.5,fl*.3))/n/z,fl*.4);
     float wave=pow(.5+.5*sin(dot(w3,vec3(1.5,.9,2.))+t*.6*(.3+uA)),3.);
     float wave2=pow(.5+.5*sin(dot(w3,vec3(-.8,1.6,1.))-t*.4*(.3+uA)),4.);
-    float tr=0.;
+    float tr=wake(w3.xy,.2)*1.5;
     for(int k=0;k<8;k++){
       if(uTouch[k].z<0.) continue;
       float xx=uTouch[k].z*.5-length(w3.xy-uTouch[k].xy);
@@ -510,6 +567,7 @@ vec3 scene(vec2 p,float t){
       float age=uTouch[k].z; float dist=abs(p.x-uTouch[k].x);
       y+=.04*sin(dist*9.-age*3.)*exp(-dist*2.5)*exp(-age/2.5)*smoothstep(0.,.3,age);   // a touch sends a ripple along the swell
     }
+    y+=.06*wake(vec2(p.x,y),.3);   // a hand lifts the swell
     float d=p.y-y;
     float inside=smoothstep(.004,-.004,d);
     vec3 body=mix(pal(.5+.05*fi),pal(.7+.04*fi),depth)*(.55+.45*depth)*(.85+.15*smoothstep(-.3,0.,d));
@@ -536,6 +594,8 @@ vec3 scene(vec2 p,float t){
       vec2 o=vec2(x,y); vec2 h=h22(id+o+fl*5.);
       float present=smoothstep(h.x-.05,h.x+.05,.25+.7*uDensity);
       vec2 pos=o+.5+(h-.5)*.5;
+      vec2 wp0=(id+pos-vec2(t*.012*(fl+1.),t*.006*(fl+1.))-fl*13.-uSeed)/sc;
+      pos+=wakePush(wp0,.3,.12)*sc*depth;
       float d=length(f-pos);
       float r=(.08+.16*h.y)*(.6+.8*uA)*depth;
       float pulse=.7+.3*sin(uTime*(.15+.25*h.x)+h.y*6.28);

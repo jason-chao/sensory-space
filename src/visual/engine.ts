@@ -141,6 +141,9 @@ export class VisualEngine {
   private outIdx = 0;
   private frame = 0;
   private touchBuf = new Float32Array(32);
+  private trailBuf = new Float32Array(96);
+  private trailV = new Float32Array(48);
+  private trailN = 0;
   private noTouch = new Float32Array(32).fill(-1);
   private thumb: Target | undefined;
   private touchCol = new Float32Array(24);
@@ -208,7 +211,7 @@ export class VisualEngine {
     if (!this.scenes.has(id)) {
       const def = getScene(id);
       this.scenes.set(id, this.program(COMMON + def.glsl + MAIN,
-        ["uRes", "uT", "uTime", "uSeed", "uDensity", "uA", "uB", "uBreath", "uPal", "uTouch", "uPrev", "uDt"]));
+        ["uRes", "uT", "uTime", "uSeed", "uDensity", "uA", "uB", "uBreath", "uPal", "uTouch", "uPrev", "uDt", "uTrail", "uTrailV", "uTrailN"]));
     }
     return this.scenes.get(id) ?? null;
   }
@@ -294,6 +297,9 @@ export class VisualEngine {
     gl.uniform1i(p.u.uPrev, 3);
     gl.uniform1f(p.u.uDt, Math.min(dt, 0.1));
     gl.uniform4fv(p.u.uTouch, this.touchBuf);
+    gl.uniform4fv(p.u.uTrail, this.trailBuf);
+    gl.uniform2fv(p.u.uTrailV, this.trailV);
+    gl.uniform1i(p.u.uTrailN, this.trailN);
     gl.uniform2f(p.u.uRes, to.w, to.h);
     gl.uniform1f(p.u.uT, sim.phase);
     gl.uniform1f(p.u.uTime, sim.t);
@@ -324,6 +330,12 @@ export class VisualEngine {
       }
     }
 
+    this.trailN = Math.min(24, sim.trail.length);
+    for (let i = 0; i < this.trailN; i++) {
+      const s = sim.trail[sim.trail.length - this.trailN + i];
+      this.trailBuf.set([(s.x - 0.5) * asp, s.y - 0.5, sim.t - s.t, Math.hypot(s.vx * asp, s.vy)], i * 4);
+      this.trailV.set([s.vx * asp, s.vy], i * 2);
+    }
     const texA = this.drawScene(sim.sceneA, sim.visSeedA, this.tA, 0, dt);
     const mixing = sim.sceneB !== null;
     const texB = mixing ? this.drawScene(sim.sceneB!, sim.visSeedB, this.tB, 1, dt) : this.tB.tex;
@@ -412,6 +424,7 @@ export class VisualEngine {
       gl.uniform1f(p.u.uBreath, 0.6);
       gl.uniform3fv(p.u.uPal, sim.pal);
       gl.uniform4fv(p.u.uTouch, this.noTouch);
+      gl.uniform1i(p.u.uTrailN, 0);
       gl.uniform1f(p.u.uDt, 0.05);
       if (def.feedback) {
         // ping-pong through the slot-2 feedback pair so trails can build up

@@ -20,7 +20,7 @@ Twenty-one scenes explore colour and pattern, accompanied by synthesised soundsc
 
 ## Step inside
 
-Open **[sensory-space.org](https://sensory-space.org)** and press **Begin**. Sound starts then, so set your volume low first. Full screen is optional. Touch or click the picture, or simply watch and listen.
+Open **[sensory-space.org](https://sensory-space.org)** and press **Begin**. Sound starts then, so set your volume low first. Full screen is optional. Touch, drag, or simply watch and listen.
 
 Choose **Gentle** for dimmer, slower scenes. **Ease** softens everything at once; **Stop** takes it to black and silence. It is free, there is no account, and once loaded it works without a connection. The light and sound are generated in your browser, and your settings stay on your device.
 
@@ -70,7 +70,9 @@ Five scales, including two Japanese pentatonic scales. All sound is synthesised 
 
 ## Touch, and the space answers
 
-Touch or click the picture: a bloom of light opens and a note sounds. Left to right walks up the scale; with the same scale and key, the same place gives the same note. Some scenes answer in their own way. Lamps pass light to their neighbours. Flowers scatter. Water parts.
+Tap or click the picture: a bloom of light opens and a note sounds. Left to right walks up the scale; with the same scale and key, the same place gives the same note.
+
+Press and drag, and the picture answers your hand in its own nature. Lava follows and stretches until it splits. Fireflies, dots and bubbles part around your path and drift back. Ink, the kaleidoscope and the pool light stir and slowly unwind. Silk threads bend away like water plants. Water of light runs along the drag as a current. Lamps and the lattice light up along the path, flowers scatter, and the swells of the sea rise under your hand.
 
 ## Made with care
 

@@ -106,7 +106,7 @@ export class Player {
 
   start(file: SessionFile): void {
     this.file = file; this.idx = 0; this.active = true;
-    this.store.load(file.initial, "replay", (k) => k === "touch");
+    this.store.load(file.initial, "replay", (k) => k === "touch" || k === "drag");
     this.sim.reset(file.seed, file.t0, file.phase0);
     for (const d of file.signals) this.bus.declare({ ...d, source: "replay" });
     this.sim.driftEnabled = false;

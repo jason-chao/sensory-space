@@ -35,6 +35,8 @@ export class Sim {
   private pendingVar = false;
   /** recent touches: x, y (0..1, origin bottom-left) and the time they happened */
   touches: { x: number; y: number; t: number }[] = [];
+  /** where a finger or mouse button has been dragged in the last few seconds: position, time, velocity */
+  trail: { x: number; y: number; t: number; vx: number; vy: number }[] = [];
   private freezeAmt = 0;
   blank = 0;
   private pending: string | null = null;
@@ -54,6 +56,16 @@ export class Sim {
       if (key === "scene") this.requestScene(String(value));
       if (key === "palette") this.lastPaletteT = this.t;
       if (key === "variation") this.requestVariation();
+      if (key === "drag") {
+        const [x, y] = String(value).split(",").map(Number);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          const last = this.trail[this.trail.length - 1];
+          const dt = last ? Math.max(0.03, this.t - last.t) : 1;
+          const vx = last ? (x - last.x) / dt : 0, vy = last ? (y - last.y) / dt : 0;
+          this.trail.push({ x, y, t: this.t, vx: Math.max(-3, Math.min(3, vx)), vy: Math.max(-3, Math.min(3, vy)) });
+          if (this.trail.length > 24) this.trail.shift();
+        }
+      }
       if (key === "touch") {
         const [x, y] = String(value).split(",").map(Number);
         if (Number.isFinite(x) && Number.isFinite(y)) { this.touches.push({ x, y, t: this.t }); if (this.touches.length > 8) this.touches.shift(); }
@@ -72,7 +84,7 @@ export class Sim {
     this.sceneA = this.store.str("scene"); this.sceneB = null; this.mix = 0; this.pending = null; this.pendingVar = false;
     this.visSeedA = this.visSeedB = this.visSeed();
     this.calm = this.store.bool("ease") ? 1 : 0;
-    this.touches = []; this.freezeAmt = this.store.bool("freeze") ? 1 : 0; this.blank = this.store.bool("v.blank") ? 1 : 0;
+    this.touches = []; this.trail = []; this.freezeAmt = this.store.bool("freeze") ? 1 : 0; this.blank = this.store.bool("v.blank") ? 1 : 0;
     this.bus.reset();
   }
 
@@ -172,6 +184,7 @@ export class Sim {
         this.store.set("palette", others[Math.floor(this.rand() * others.length)].id, "system");
       }
     }
+    while (this.trail.length && this.t - this.trail[0].t > 4) this.trail.shift();
     this.t += dt;
   }
 }

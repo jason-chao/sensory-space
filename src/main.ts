@@ -15,10 +15,10 @@ import { buildUi, type Ui } from "./ui/panel";
 import { FEATURES } from "./core/features";
 import * as analytics from "./analytics";
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
-const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "variation"]);
+const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "drag", "variation"]);
 
 const ls = {
   get<T>(k: string, d: T): T { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : d; } catch { return d; } },
@@ -41,10 +41,13 @@ export class App {
   stopped = false;
   private touchN = 0;
   private lastTouch = 0;
+  private dragging = false;
+  private lastDrag = 0;
+  private dragN = 0;
   private stopEl: HTMLElement | null = null;
   /** how a change was made, for the usage counts; set by the caller just before the store changes */
   via: "bar" | "panel" | "key" | "auto" | "replay" | "touch" | "" = "";
-  private usage = { startedAt: 0, sceneSince: 0, paletteSince: 0, touches: 0, touchScene: "", scenes: new Set<string>(), frames: 0, frameMs: 0 };
+  private usage = { startedAt: 0, sceneSince: 0, paletteSince: 0, touches: 0, drags: 0, touchScene: "", scenes: new Set<string>(), frames: 0, frameMs: 0 };
   private debounce = analytics.debouncer(1500);
   private inputSince = 0; private inputGood = 0; private inputTicks = 0;
   /** while a soundscape or preset applies several settings at once, the individual changes are not counted */
@@ -95,6 +98,8 @@ export class App {
         this.usage.paletteSince = performance.now();
       } else if (key === "touch") {
         this.usage.touches++; this.usage.touchScene = this.store.str("scene");
+      } else if (key === "drag") {
+        this.usage.drags++;
       } else if (key === "variation") {
         t("control", { name: "variation", via: v });
       } else if (key === "ease" || key === "freeze" || key === "v.blank" || key === "a.mute" || key === "ui.iconsOnly") {
@@ -114,7 +119,7 @@ export class App {
     });
     // touches, aggregated once a minute
     window.setInterval(() => {
-      if (this.usage.touches) { t("touch", { count: this.usage.touches, scene: this.usage.touchScene }); this.usage.touches = 0; }
+      if (this.usage.touches || this.usage.drags) { t("touch", { count: this.usage.touches, drag_seconds: Math.round(this.usage.drags / 12), scene: this.usage.touchScene || this.store.str("scene") }); this.usage.touches = 0; this.usage.drags = 0; }
     }, 60000);
     // dwell: a pulse every two minutes while the page is showing
     window.setInterval(() => {
@@ -269,7 +274,20 @@ export class App {
       const r = stage.getBoundingClientRect();
       const x = (e.clientX - r.left) / r.width, y = 1 - (e.clientY - r.top) / r.height;
       this.store.set("touch", `${x.toFixed(3)},${y.toFixed(3)},${this.touchN++}`);
+      this.dragging = true; this.lastDrag = 0;
+      try { stage.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     });
+    // press and drag: the finger's path reaches the scenes as a wake (about 12 samples a second)
+    stage.addEventListener("pointermove", (e) => {
+      if (!this.dragging || this.stopped || this.player.active) return;
+      const now = performance.now();
+      if (now - this.lastDrag < 80) return;
+      this.lastDrag = now;
+      const r = stage.getBoundingClientRect();
+      const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y = Math.min(1, Math.max(0, 1 - (e.clientY - r.top) / r.height));
+      this.store.set("drag", `${x.toFixed(3)},${y.toFixed(3)},${this.dragN++}`);
+    });
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) stage.addEventListener(ev, () => { this.dragging = false; });
   }
 
   // --- actions -------------------------------------------------------------

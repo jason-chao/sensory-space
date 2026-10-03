@@ -104,6 +104,12 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 
 - Anonymous usage counting on the public site only, with a self-hosted cookieless counter; opt-out in About
 
+## Done in version 0.8
+
+- Press-and-drag wake answered by every scene in its own way; recorded and counted
+- Control bar reflows into two rows on phones
+- Fractal garden withdrawn pending rework
+
 ## Next
 
 | Priority | Item |
