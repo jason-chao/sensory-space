@@ -346,6 +346,8 @@ For the public repository the owner asked for the control bar to carry Full scre
 
 Some autistic users found the fractal garden "spooky". On inspection it had three qualities the design otherwise avoids: a dark, speckled interior; fine, high-contrast edge detail that shimmered as the shape changed; and a form that never settled. Response: the fractal now keeps to a rounded, connected shape, uses few iterations so its edge is soft, and is lit and pale inside; it also moved towards the end of the list. Two calmer scenes in the spirit of immersive digital art were added: rolling waves drawn as flowing lines in the manner of Japanese woodblock seas, and fields of soft pulsing dots at many depths after the polka-dot infinity rooms of Yayoi Kusama. Both answer touch gently. Lesson recorded: fine high-contrast detail and dark voids read as unease even when nothing flashes; the brightness limiter does not address this, only design does.
 
+**Follow-up, later the same day.** The softened version still read as uneasy to viewers. The scene is withdrawn from the picker, the stepper and automatic changes, with its code kept for a later rework. A saved setting or recording that names it still renders.
+
 ## 4g. Usage counting on the public site (2026-10-03)
 
 **Decision.** The public site keeps anonymous usage counts through a self-hosted, cookieless counter that accepts the Umami tracker format. Nothing is counted on copies people run themselves, on the internal installation or on preview addresses: the counter's id exists only in the public build, the script attaches only on the public host names, and the counter accepts only its allowed domain. Visitors with Do Not Track are left out, and About offers an opt-out stored on the device.

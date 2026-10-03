@@ -15,6 +15,8 @@ export interface SceneDef {
   feedback?: boolean;
   /** the scene answers touches itself, so the generic bloom is not drawn over it */
   ownTouch?: boolean;
+  /** kept in the code but not offered: not in the picker, not stepped to, not chosen by automatic changes */
+  hidden?: boolean;
   /** GLSL defining: vec3 scene(vec2 p, float t) */
   glsl: string;
 }
@@ -472,7 +474,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "julia", label: "Fractal garden", blurb: "Soft fronds of a fractal, slowly breathing",
-    a: { label: "Zoom", def: 0.35 },
+    a: { label: "Zoom", def: 0.35 }, hidden: true,   // viewers found it uneasy; withdrawn until it is reworked
     glsl: `
 vec3 scene(vec2 p,float t){
   // the seed wanders slowly around a point where the set stays whole and rounded, never dust
@@ -552,6 +554,9 @@ vec3 scene(vec2 p,float t){
 }`,
   },
 ];
+
+/** the scenes offered to people */
+export const VISIBLE_SCENES: SceneDef[] = SCENES.filter((s) => !s.hidden);
 
 export function getScene(id: string): SceneDef {
   return SCENES.find((s) => s.id === id) ?? SCENES[0];

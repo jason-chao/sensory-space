@@ -1,7 +1,7 @@
 import { el } from "./dom";
 import { ICONS } from "./icons";
 import type { App } from "../main";
-import { SCENES, getScene } from "../visual/scenes";
+import { VISIBLE_SCENES, getScene } from "../visual/scenes";
 import { PALETTES, paletteCss, getPalette } from "../visual/palettes";
 import { VOICES, SCALES } from "../audio/voicelist";
 import { MODES, getMode } from "../signals/mapping";
@@ -72,7 +72,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
 
   // ---------------------------------------------------------------- Picture
   const thumbs = new Map<string, HTMLCanvasElement>();
-  const sceneGrid = el("div", { class: "scenes" }, ...SCENES.map((s) => {
+  const sceneGrid = el("div", { class: "scenes" }, ...VISIBLE_SCENES.map((s) => {
     const c = el("canvas", { width: 96, height: 54 });
     thumbs.set(s.id, c);
     const b = el("button", { class: "thumb", title: s.blurb, onclick: () => store.set("scene", s.id) }, c, el("span", {}, s.label));

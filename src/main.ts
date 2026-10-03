@@ -7,7 +7,7 @@ import { newSeed } from "./core/prng";
 import { SignalBus } from "./signals/bus";
 import { EegBridgeSource, DemoSource, defaultBridgeUrl, type SignalSource } from "./signals/sources";
 import { VisualEngine } from "./visual/engine";
-import { SCENES } from "./visual/scenes";
+import { VISIBLE_SCENES } from "./visual/scenes";
 import { PALETTES } from "./visual/palettes";
 import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
@@ -327,8 +327,8 @@ export class App {
   }
   stepScene(d: number, via: "bar" | "key" = "bar"): void {
     this.via = via;
-    const i = SCENES.findIndex((s) => s.id === this.store.str("scene"));
-    const next = SCENES[(i + d + SCENES.length) % SCENES.length];
+    const i = VISIBLE_SCENES.findIndex((s) => s.id === this.store.str("scene"));
+    const next = VISIBLE_SCENES[(i + d + VISIBLE_SCENES.length) % VISIBLE_SCENES.length];
     this.store.set("scene", next.id);
     this.ui.toast(next.label);
   }

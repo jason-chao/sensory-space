@@ -3,7 +3,7 @@ import { mulberry32, subSeed, type Rand } from "./prng";
 import { SignalBus } from "../signals/bus";
 import { modulation } from "../signals/mapping";
 import { getPalette, PALETTES } from "../visual/palettes";
-import { SCENES } from "../visual/scenes";
+import { SCENES, VISIBLE_SCENES } from "../visual/scenes";
 
 export const STEP = 1 / 60;
 const TRANSITION_S = 6;
@@ -163,7 +163,7 @@ export class Sim {
     if (this.driftEnabled && changesOn && !this.store.bool("freeze")) {
       const driftMin = this.store.num("drift.minutes");
       if (driftMin > 0 && this.t - this.lastSceneT > driftMin * 60) {
-        const others = SCENES.filter((x) => x.id !== this.store.str("scene"));
+        const others = VISIBLE_SCENES.filter((x) => x.id !== this.store.str("scene"));
         this.store.set("scene", others[Math.floor(this.rand() * others.length)].id, "system");
       }
       const colMin = this.store.num("drift.colourMinutes");

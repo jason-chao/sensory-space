@@ -12,7 +12,7 @@
 
 Light drifts, sound gathers, and a touch opens a bloom of light and a note. Sensory Space is an open, generative artwork of light and sound, made live in your browser, for any screen from a projected wall to the laptop on your desk.
 
-Twenty-two scenes explore colour and pattern, accompanied by synthesised soundscapes. Made with care for autistic adults, it leaves the pace, brightness and sound to the person in the room.
+Twenty-one scenes explore colour and pattern, accompanied by synthesised soundscapes. Made with care for autistic adults, it leaves the pace, brightness and sound to the person in the room.
 
 <p align="center">
   <img src="docs/images/collage.jpg" width="100%" alt="Eight scenes: aurora, ink in water, kaleidoscope, flowers, water of light, sea glass, light lattice, resonating lamps">
@@ -24,7 +24,7 @@ Open **[sensory-space.org](https://sensory-space.org)** and press **Begin**. Sou
 
 Choose **Gentle** for dimmer, slower scenes. **Ease** softens everything at once; **Stop** takes it to black and silence. It is free, there is no account, and once loaded it works without a connection. The light and sound are generated in your browser, and your settings stay on your device.
 
-## Twenty-two scenes
+## Twenty-one scenes
 
 <table>
 <tr>
@@ -49,7 +49,7 @@ Choose **Gentle** for dimmer, slower scenes. **Ease** softens everything at once
 </tr>
 </table>
 
-And also: lava lamp, fireflies, breathing orb, night sky, rain on a pond, bubbles, lanterns, brush strokes, fractal garden, colour wash. Ten palettes, from deep sea to ember. Every scene grows from a seed; choose **New variation** to explore another pattern.
+And also: lava lamp, fireflies, breathing orb, night sky, rain on a pond, bubbles, lanterns, brush strokes, colour wash. Ten palettes, from deep sea to ember. Every scene grows from a seed; choose **New variation** to explore another pattern.
 
 ## Sound
 

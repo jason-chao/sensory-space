@@ -109,6 +109,7 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 | Priority | Item |
 |---|---|
 | 0 | Update the existing EEG bridge to the new protocol, then test the band analysis on a real headset |
+| 0 | Rework the withdrawn fractal garden, or replace it, and test it with the viewers who found it uneasy |
 | 1 | Feedback sessions with autistic adults; adjust defaults, scenes and controls |
 | 2 | Verification with an external flash analyser on exported video |
 | 3 | Structured listening tests of the sound layers |
