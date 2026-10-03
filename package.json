@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "flashcheck": "node scripts/flashcheck.mjs"
+    "flashcheck": "node scripts/flashcheck.mjs",
+    "deploy:pages": "bash scripts/deploy-pages.sh"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

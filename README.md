@@ -105,7 +105,7 @@ The container serves the app over http and https. Browsers will ask you to accep
 docker exec sensory-space cat /data/caddy/pki/authorities/local/root.crt > sensory-space-root.crt
 ```
 
-For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH` for a sub-path).
+For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH` for a sub-path). The public site at [sensory-space.org](https://sensory-space.org) is deployed with `npm run deploy:pages`.
 
 ## Controls
 
