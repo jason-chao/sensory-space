@@ -171,3 +171,11 @@ describe("catalogue", () => {
     expect(new Set(PALETTES.map((p) => p.id)).size).toBe(PALETTES.length);
   });
 });
+
+describe("feature switches", () => {
+  it("a switch is on only for an explicit 1 or true", async () => {
+    const { on } = await import("../src/core/features");
+    expect(on(undefined)).toBe(false); expect(on("")).toBe(false); expect(on("0")).toBe(false); expect(on("false")).toBe(false);
+    expect(on("1")).toBe(true); expect(on("true")).toBe(true);
+  });
+});

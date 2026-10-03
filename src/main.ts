@@ -12,6 +12,7 @@ import { PALETTES } from "./visual/palettes";
 import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
+import { FEATURES } from "./core/features";
 
 const VERSION = "0.5.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
@@ -52,6 +53,7 @@ export class App {
     this.sim.reset(test ? 12345 : newSeed());
     this.audio = new AudioEngine(this.sim);
     this.recorder = new Recorder(this.store, this.sim, this.bus, VERSION);
+    this.recorder.includeSignals = FEATURES.input;
     this.player = new Player(this.store, this.sim, this.bus);
     this.player.onEnd = () => this.ui.toast("Replay finished");
     this.store.onChange((key, value) => {
@@ -251,6 +253,7 @@ export class App {
     ls.set(LS_URL, url);
   }
   toggleSource(id: "eeg" | "demo"): void {
+    if (!FEATURES.input) return;
     if (this.player.active) { this.ui.toast("Stop the replay first"); return; }
     const src: SignalSource = this.sources[id];
     const other: SignalSource = this.sources[id === "demo" ? "eeg" : "demo"];

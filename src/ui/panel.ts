@@ -6,6 +6,7 @@ import { PALETTES, paletteCss, getPalette } from "../visual/palettes";
 import { VOICES, SCALES } from "../audio/voicelist";
 import { MODES, getMode } from "../signals/mapping";
 import { PROFILES, SOUNDSCAPES } from "../core/params";
+import { FEATURES } from "../core/features";
 
 const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const LS_SECTIONS = "sensory.sections";
@@ -63,8 +64,8 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   };
   /** a collapsible section whose open state is remembered */
   const openState: Record<string, boolean> = (() => { try { return JSON.parse(localStorage.getItem(LS_SECTIONS) || "{}"); } catch { return {}; } })();
-  const section = (id: string, title: string, ...children: (Node | string)[]) => {
-    const d = el("details", { open: openState[id] ?? true }, el("summary", {}, title), el("div", { class: "sec" }, ...children));
+  const section = (id: string, title: string, ...children: (Node | string | null | false)[]) => {
+    const d = el("details", { open: openState[id] ?? true }, el("summary", {}, title), el("div", { class: "sec" }, ...children.filter((c): c is Node | string => !!c)));
     d.addEventListener("toggle", () => { openState[id] = d.open; try { localStorage.setItem(LS_SECTIONS, JSON.stringify(openState)); } catch { /* ignore */ } });
     return d;
   };
@@ -155,8 +156,9 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     ...MODES.map((m) => el("option", { value: m.id }, m.label)));
   const modeHint = el("p", { class: "hint" });
   syncers.push(() => { modeSel.value = store.str("r.mode"); modeHint.textContent = getMode(store.str("r.mode")).description; });
+  const touchSection = () => section("touch", "Touch", el("p", { class: "hint" }, "Touch or click the picture to make a bloom of light and a note. Left to right walks up the scale; the same place always gives the same note. Some scenes answer in their own way."));
   const pageInput = el("div", { class: "page" },
-    section("touch", "Touch", el("p", { class: "hint" }, "Touch or click the picture to make a bloom of light and a note. Left to right walks up the scale; the same place always gives the same note. Some scenes answer in their own way.")),
+    touchSection(),
     section("devices", "Devices", el("div", { class: "rowb" }, bwBtn, demoBtn), status,
       el("details", {}, el("summary", { class: "hint" }, "Bridge address"), urlInput,
         el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of an EEG bridge that speaks the Sensory Space protocol (see docs/EEG-BRIDGE-PROTOCOL.md)."))),
@@ -210,7 +212,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   const pageRecording = el("div", { class: "page" },
     section("record", "Record",
       el("p", { class: "hint" }, "Recording is off unless you start it. A recording is a small file of settings and changes, saved to this device when you stop. Sensory Space can replay it later, regenerating the same visuals and sound."),
-      el("label", { class: "check" }, incl, "Include the input signals that shaped the session"),
+      FEATURES.input ? el("label", { class: "check" }, incl, "Include the input signals that shaped the session") : null,
       el("div", { class: "rowb" }, recBtn)),
     section("replay", "Replay", el("div", { class: "rowb" }, playBtn, fileInput), sessionStatus),
   );
@@ -218,6 +220,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   // ---------------------------------------------------------------- Help
   const key = (k: string, what: string) => el("tr", {}, el("td", {}, el("kbd", {}, k)), el("td", {}, what));
   const pageHelp = el("div", { class: "page" },
+    FEATURES.input ? null : touchSection(),
     section("keys", "Keys", el("table", { class: "keys" },
       key("← →", "previous or next scene"), key("C V", "next or previous colours"), key("+ −", "motion faster or slower"),
       key("[ ]", "previous or next soundscape"), key("↑ ↓", "volume up or down"), key("E", "ease on or off"), key("X", "stop at once, or resume"), key("M", "mute"),
@@ -230,8 +233,10 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   );
 
   // ---------------------------------------------------------------- panel and tabs
-  const pages = [pagePicture, pageSound, pageChanges, pageInput, pageSetups, pageRecording, pageHelp];
-  const names = ["Picture", "Sound", "Changes", "Input", "Setups", "Recording", "Help"];
+  const all: [string, HTMLElement][] = [["Picture", pagePicture], ["Sound", pageSound], ["Changes", pageChanges], ["Input", pageInput], ["Setups", pageSetups], ["Recording", pageRecording], ["Help", pageHelp]];
+  const shown = all.filter(([n]) => n !== "Input" || FEATURES.input);
+  const pages = shown.map(([, p]) => p);
+  const names = shown.map(([n]) => n);
   const tabBtns = names.map((n, i) => el("button", { role: "tab", onclick: () => show(i) }, n));
   const show = (i: number) => {
     pages.forEach((p, j) => p.classList.toggle("on", i === j));
@@ -245,7 +250,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       action("close", "Close", { onclick: () => app.togglePanel() })),
     el("div", { class: "tabs", role: "tablist" }, ...tabBtns), el("div", { class: "pages" }, ...pages));
   let savedTab = 0; try { savedTab = Number(localStorage.getItem("sensory.tab")) || 0; } catch { /* ignore */ }
-  show(savedTab);
+  show(Math.min(savedTab, pages.length - 1));
 
   // ---------------------------------------------------------------- bar
   const group = (caption: string, prev: HTMLElement, value: HTMLElement, next: HTMLElement, cls = "") =>

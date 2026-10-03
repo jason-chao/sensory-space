@@ -1,6 +1,9 @@
 services:
   sensory-space:
-    build: .
+    build:
+      context: .
+      args:
+        FEATURE_INPUT: ${FEATURE_INPUT:-0}
     container_name: sensory-space
     env_file: .env
     ports:

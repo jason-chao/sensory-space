@@ -4,6 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // BASE_PATH: set when the site is served from a sub-path (for example a project page).
 // EEG_BRIDGE_UPSTREAM: where the dev server forwards /bridge/eeg (kept in .env.local, never committed).
+// VITE_FEATURE_INPUT=1: build in the Input tab (EEG bridge, demo signals). Off by default.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const upstream = env.EEG_BRIDGE_UPSTREAM;

@@ -131,7 +131,7 @@ Recording is off unless you start it. A session is a small file of your settings
 
 ## For the curious: body signals
 
-Entirely optional, and nothing else depends on it. If you happen to have an EEG headband, a small bridge program can let its signals gently tint the colours and tone. Nothing is scored and nothing speeds up when you are tense. The bridge speaks an open format based on Lab Streaming Layer, described in [docs/EEG-BRIDGE-PROTOCOL.md](docs/EEG-BRIDGE-PROTOCOL.md), and **Try demo signals** shows the idea without any hardware.
+Entirely optional, and nothing else depends on it. In builds that include it, if you happen to have an EEG headband, a small bridge program can let its signals gently tint the colours and tone. Nothing is scored and nothing speeds up when you are tense. The bridge speaks an open format based on Lab Streaming Layer, described in [docs/EEG-BRIDGE-PROTOCOL.md](docs/EEG-BRIDGE-PROTOCOL.md), and **Try demo signals** shows the idea without any hardware.
 
 ## For makers
 
@@ -146,7 +146,7 @@ node scripts/shots.mjs shots  # a still of every scene
 - **A scene** is one GLSL function of position and time in `src/visual/scenes.ts`. It needs no safety code of its own.
 - **A sound layer** is a factory in `src/audio/engine.ts` and a line in `src/audio/voicelist.ts`.
 - **A soundscape** or an **intensity preset** is a few lines in `src/core/params.ts`.
-- **An input device** is a bridge speaking the protocol, or a `SignalSource` in `src/signals/sources.ts`. For development, set `EEG_BRIDGE_UPSTREAM` in `.env.local` and the dev server forwards `/bridge/eeg`.
+- **An input device** is a bridge speaking the protocol, or a `SignalSource` in `src/signals/sources.ts`. The Input tab is a build switch: set `VITE_FEATURE_INPUT=1` (or `FEATURE_INPUT=1` for the container) to include it; the default build and the public site leave it out. For development, also set `EEG_BRIDGE_UPSTREAM` in `.env.local` and the dev server forwards `/bridge/eeg`.
 
 ```
 src/core      simulation clock, parameters, seeded randomness
