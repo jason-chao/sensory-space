@@ -186,25 +186,6 @@ vec3 scene(vec2 p,float t){
 }`,
   },
   {
-    id: "julia", label: "Fractal garden", blurb: "A fractal that slowly reshapes itself",
-    a: { label: "Zoom", def: 0.35 },
-    glsl: `
-vec3 scene(vec2 p,float t){
-  float a=t*.02+uSeed; vec2 c=.7885*vec2(cos(a),sin(a));
-  vec2 z=p*(2.3-1.3*uA); float it=0.; float m2=0.; float tr=9.;
-  float maxIt=20.+44.*uDensity;
-  for(int i=0;i<64;i++){
-    if(float(i)>=maxIt) break;
-    z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c; m2=dot(z,z);
-    if(m2>64.) break; it+=1.; tr=min(tr,m2);
-  }
-  if(m2<=64.){ float q=sqrt(tr); return pal(.55+.7*q+t*.004)*(.2+.55*q); }   // inside: shaded by how close the orbit came to the centre
-  float v=clamp((it+4.-log2(log2(m2)))/maxIt,0.,1.);
-  vec3 col=pal(.15+1.4*sqrt(v)+t*.004);
-  return col*(.12+.8*pow(v,.45));
-}`,
-  },
-  {
     id: "ripples", label: "Rain on a pond", blurb: "Rings spreading from gentle drops",
     a: { label: "Shine", def: 0.5 },
     glsl: `
@@ -485,6 +466,87 @@ vec3 scene(vec2 p,float t){
     float b=.05+wave*.6+wave2*.4+tr*1.2;
     float d=length(f); float s=.06+.04*b; float pt=pow(s*s/(d*d+s*s),1.5);
     c+=pt*b*mix(pal(.1+.3*wave+.04*fl),pal(.6+.3*wave2),wave2)*(1.-.15*fl)*.7;
+  }
+  return c;
+}`,
+  },
+  {
+    id: "julia", label: "Fractal garden", blurb: "Soft fronds of a fractal, slowly breathing",
+    a: { label: "Zoom", def: 0.35 },
+    glsl: `
+vec3 scene(vec2 p,float t){
+  // the seed wanders slowly around a point where the set stays whole and rounded, never dust
+  float a=t*.015+uSeed; vec2 c=vec2(-.123,.745)+.05*vec2(cos(a),sin(a*.7));
+  vec2 z=p*(2.1-1.2*uA); float it=0.; float m2=0.; float tr=9.;
+  float maxIt=10.+18.*uDensity;   // few iterations: smooth bands rather than fine, crystalline edges
+  for(int i=0;i<32;i++){
+    if(float(i)>=maxIt) break;
+    z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c; m2=dot(z,z);
+    if(m2>64.) break; it+=1.; tr=min(tr,m2);
+  }
+  vec3 outside=pal(.6+.1*p.y)*.22;    // a quiet lit ground, not a void
+  if(m2<=64.){ float q=sqrt(tr); return mix(pal(.35+.4*q+t*.003),vec3(1.),.15)*(.65+.3*q); }   // inside: lit and pale, brighter towards the heart
+  float v=clamp((it+4.-log2(log2(m2)))/maxIt,0.,1.);
+  float band=smoothstep(.0,.9,v);
+  return mix(outside,pal(.2+.6*band+t*.003)*(.45+.4*band),band*.85);
+}`,
+  },
+  {
+    id: "waves", label: "Rolling waves", blurb: "Slow swells drawn as flowing lines, like a woodblock sea",
+    a: { label: "Swell", def: 0.5 },
+    glsl: `
+vec3 scene(vec2 p,float t){
+  vec3 c=pal(.62)*.14+.04*fbm(p*2.+vec2(t*.01,0.)+uSeed);   // a pale sky
+  for(int i=0;i<7;i++){
+    float fi=float(i); float depth=fi/6.;
+    float w=clamp(uDensity*6.+1.5-fi,0.,1.); if(w<=0.) break;
+    float ph=t*.3*(.7+.1*fi)+fi*1.7+uSeed;
+    float sw=sin(p.x*(1.6+.25*fi)+ph); sw+=.35*sin(2.*(p.x*(1.6+.25*fi)+ph)+1.2);   // a leaning swell, steeper on one side
+    float y=.4-.125*fi+(.05+.06*uA)*sw+.02*sin(p.x*4.1-ph*1.3+fi)+.015*(fbm(vec2(p.x*2.+fi*5.,ph*.1))-.5);
+    for(int k=0;k<8;k++){
+      if(uTouch[k].z<0.) continue;
+      float age=uTouch[k].z; float dist=abs(p.x-uTouch[k].x);
+      y+=.04*sin(dist*9.-age*3.)*exp(-dist*2.5)*exp(-age/2.5)*smoothstep(0.,.3,age);   // a touch sends a ripple along the swell
+    }
+    float d=p.y-y;
+    float inside=smoothstep(.004,-.004,d);
+    vec3 body=mix(pal(.5+.05*fi),pal(.7+.04*fi),depth)*(.55+.45*depth)*(.85+.15*smoothstep(-.3,0.,d));
+    float crest=smoothstep(.012,0.,abs(d))*.5;                              // a soft pale line along the crest
+    float line1=smoothstep(.004,0.,abs(d+.03))*.12, line2=smoothstep(.004,0.,abs(d+.065))*.08;   // faint lines under the crest
+    c=mix(c,body,inside*w);
+    c+=w*(crest+ (line1+line2)*inside)*mix(pal(.85),vec3(1.),.5);
+  }
+  return c;
+}`,
+  },
+  {
+    id: "dots", label: "Infinite dots", blurb: "Fields of soft dots at many depths, slowly pulsing",
+    a: { label: "Dot size", def: 0.5 },
+    glsl: `
+vec3 scene(vec2 p,float t){
+  vec3 c=pal(.6+.1*p.y)*.05;
+  for(int L=0;L<4;L++){
+    float fl=float(L); float depth=1.-fl*.22;
+    float sc=3.+fl*2.2;
+    vec2 q=p*sc+vec2(t*.012*(fl+1.),t*.006*(fl+1.))+fl*13.+uSeed;
+    vec2 id=floor(q); vec2 f=fract(q);
+    for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+      vec2 o=vec2(x,y); vec2 h=h22(id+o+fl*5.);
+      float present=smoothstep(h.x-.05,h.x+.05,.25+.7*uDensity);
+      vec2 pos=o+.5+(h-.5)*.5;
+      float d=length(f-pos);
+      float r=(.08+.16*h.y)*(.6+.8*uA)*depth;
+      float pulse=.7+.3*sin(uTime*(.15+.25*h.x)+h.y*6.28);
+      float glow=0.;
+      for(int k=0;k<8;k++){
+        if(uTouch[k].z<0.) continue;
+        vec2 wp=(id+o+pos-vec2(t*.012*(fl+1.),t*.006*(fl+1.))-fl*13.-uSeed)/sc;
+        float xx=uTouch[k].z*.35-length(wp-uTouch[k].xy);
+        if(xx>0.) glow+=smoothstep(0.,.08,xx)*exp(-xx*5.);
+      }
+      float disc=smoothstep(r,r*.55,d);
+      c+=present*disc*pal(h.x*.8+.05*fl)*(.45+.4*pulse+.6*glow)*depth;
+    }
   }
   return c;
 }`,

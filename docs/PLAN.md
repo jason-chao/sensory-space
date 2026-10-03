@@ -94,6 +94,12 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Art framing: tagline, About section with the author, no disclaimer text
 - README with engine-rendered stills and an animation
 
+## Done in version 0.6
+
+- Fractal garden softened after user comments; Rolling waves and Infinite dots added (22 scenes)
+- Settings tabs in one equal row; protocol link and GitHub mark in Help; default palette first
+- Public site at sensory-space.org on Cloudflare Pages
+
 ## Next
 
 | Priority | Item |

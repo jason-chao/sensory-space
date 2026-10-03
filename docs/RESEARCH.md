@@ -342,6 +342,10 @@ Compatibility with the first bridge's format was dropped by decision; that bridg
 
 For the public repository the owner asked for the control bar to carry Full screen instead of Stop (Stop remains on the `X` key and in the settings header), for the project to be presented as an art project with the author named, and for the README to show the work itself: stills and a short animation rendered by the engine. All images in the README come from the real renderer, in software rendering, with scenes and palettes chosen by hand; none are photographs of a room.
 
+## 4f. Third round of user comments (2026-10-03): a scene that felt uneasy
+
+Some autistic users found the fractal garden "spooky". On inspection it had three qualities the design otherwise avoids: a dark, speckled interior; fine, high-contrast edge detail that shimmered as the shape changed; and a form that never settled. Response: the fractal now keeps to a rounded, connected shape, uses few iterations so its edge is soft, and is lit and pale inside; it also moved towards the end of the list. Two calmer scenes in the spirit of immersive digital art were added: rolling waves drawn as flowing lines in the manner of Japanese woodblock seas, and fields of soft pulsing dots at many depths after the polka-dot infinity rooms of Yayoi Kusama. Both answer touch gently. Lesson recorded: fine high-contrast detail and dark voids read as unease even when nothing flashes; the brightness limiter does not address this, only design does.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.
