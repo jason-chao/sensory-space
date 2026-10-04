@@ -357,14 +357,23 @@ vec3 scene(vec2 p,float t){
 }`,
   },
   {
-    id: "wash", label: "Colour wash", blurb: "The quietest scene: a slow field of colour",
-    a: { label: "Texture", def: 0.3 },
+    id: "wash", label: "Colour wash", blurb: "The quietest scene: slow clouds of colour with drifting light",
+    a: { label: "Texture", def: 0.5 },
     glsl: `
 vec3 scene(vec2 p,float t){
   p=wakeSwirl(p,.3,.5);
-  float n=fbm(p*(.4+1.2*uA)+vec2(t*.03,-t*.02)+uSeed);
-  float g=p.y*.35+.5+.5*(n-.5);
-  return pal(g*.6+t*.008)*(.5+.3*n)*(.5+.5*uDensity);
+  float tex=.35+.65*uA;                                            // never flat: a blank field looks like no signal
+  float n1=fbm(p*.7+vec2(t*.03,-t*.02)+uSeed);
+  float n2=fbm(p*2.2+vec2(-t*.02,t*.015)+uSeed*1.7);
+  float cloud=mix(n1,n2,.35);
+  float pools=0.;                                                  // slow drifting pools of lighter colour
+  for(int i=0;i<3;i++){ float fi=float(i);
+    vec2 c=vec2(.45*asp*sin(t*.03*(1.+.3*fi)+fi*2.1+uSeed),.3*cos(t*.025*(1.+.2*fi)+fi*1.3));
+    pools+=exp(-dot(p-c,p-c)*3.)*.5; }
+  float g=p.y*.3+.5+.4*(cloud-.5)*tex;
+  vec3 col=pal(g*.6+t*.008);
+  float light=.5+.4*(cloud-.5)*tex+.28*pools*(.5+.5*tex);
+  return col*max(light,.28)*(.65+.35*uDensity);                       // a floor of light, never a dark blank
 }`,
   },
   {

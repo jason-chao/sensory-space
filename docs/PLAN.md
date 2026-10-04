@@ -110,6 +110,10 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Control bar reflows into two rows on phones
 - Fractal garden withdrawn pending rework
 
+## Done in version 0.8.1
+
+- Colour wash always textured and lit; the limiter also slows colour change; flash check measures colour
+
 ## Next
 
 | Priority | Item |

@@ -78,7 +78,7 @@ Press and drag, and the picture answers your hand in its own nature. Lava follow
 
 - **Everything is yours to set.** Scene, colours, motion, soundscape and volume sit on one bar, with their current values. Settings go deeper, grouped by concept.
 - **Changes are gradual.** Every control is followed smoothly. Scenes and palettes cross-fade over six seconds. Sound rises over five.
-- **Brightness changes are limited by design.** The last stage before the screen limits how fast the brightness of any region may change, whatever a scene, a setting or an input asks for. The checks behind this are described for makers below.
+- **Brightness and colour changes are limited by design.** The last stage before the screen limits how fast the brightness, or the colour, of any region may change, whatever a scene, a setting or an input asks for. The checks behind this are described for makers below.
 - **Ease and Stop.** `E` makes everything dimmer, slower and quieter until pressed again. `X` goes to black and silence at once, the one deliberate exception to gradual change.
 - **Private.** The light and sound are generated in your browser, and your settings are saved on your device. The public site keeps anonymous usage counts with a cookieless counter hosted by the author (which scenes and sounds are used, and for how long); there is an opt-out in Settings, Help, About, and copies you run yourself count nothing.
 

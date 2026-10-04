@@ -1,7 +1,9 @@
 import type { Sim } from "../core/sim";
 import { COMMON, MAIN, getScene } from "./scenes";
 
-/** Maximum change in regional relative luminance per second. A flash is a pair
+/** Maximum change in regional relative luminance per second. A change of colour at
+ *  constant brightness is limited at the same rate (measured as half the distance
+ *  between the regions' mean colours), so hue swings cannot flash either. A flash is a pair
  *  of opposing changes of 0.1 or more (WCAG 2.3.1). At this rate one such pair
  *  takes at least 0.57 s, so no more than about 1.75 can occur in any second,
  *  below the limit of 3. The limiter is the last stage before the screen, so it
@@ -55,12 +57,14 @@ precision highp float;
 in vec2 vUv; out vec4 o;
 uniform sampler2D uScene; uniform sampler2D uPrev; uniform float uLod; uniform float uMaxStep; uniform vec2 uCell;
 void main(){
-  float want=0., have=0.;
+  float want=0., have=0.; vec3 cw=vec3(0.), ch=vec3(0.);
   for(int y=0;y<4;y++) for(int x=0;x<4;x++){
     vec2 uv=vUv+(vec2(x,y)-1.5)*.25*uCell;
-    want+=textureLod(uScene,uv,uLod).a; have+=textureLod(uPrev,uv,uLod).a;
+    vec4 s=textureLod(uScene,uv,uLod), q=textureLod(uPrev,uv,uLod);
+    want+=s.a; have+=q.a; cw+=s.rgb; ch+=q.rgb;
   }
-  float d=abs(want-have)/16.;
+  // brightness change, or colour change at the same brightness: whichever is larger sets the pace
+  float d=max(abs(want-have)/16., length(cw-ch)/16.*.75);
   float a=min(1.,uMaxStep/max(d,1e-6));
   o=vec4(sqrt(a),0.,0.,1.);
 }`;
@@ -449,6 +453,25 @@ export class VisualEngine {
     for (let y = 0; y < h; y++) out.set(px.subarray(y * w * 4, (y + 1) * w * 4), (h - 1 - y) * w * 4);
     for (let i = 3; i < out.length; i += 4) out[i] = 255;
     return new ImageData(out, w, h);
+  }
+
+  /** mean sRGB colour of each limiter region on screen (for the automated check); call right after render */
+  readColour(): number[] {
+    const gl = this.gl;
+    const w = this.canvas.width, h = this.canvas.height;
+    const px = new Uint8Array(w * h * 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    const out = new Array(GRID_W * GRID_H * 3).fill(0), cnt = new Array(GRID_W * GRID_H).fill(0);
+    for (let y = 0; y < h; y++) {
+      const gy = Math.min(GRID_H - 1, Math.floor((y / h) * GRID_H));
+      for (let x = 0; x < w; x++) {
+        const g = gy * GRID_W + Math.min(GRID_W - 1, Math.floor((x / w) * GRID_W));
+        const i = (y * w + x) * 4;
+        out[g * 3] += px[i] / 255; out[g * 3 + 1] += px[i + 1] / 255; out[g * 3 + 2] += px[i + 2] / 255; cnt[g]++;
+      }
+    }
+    return out.map((v, i) => v / Math.max(1, cnt[Math.floor(i / 3)]));
   }
 
   /** a transition finished: the incoming scene's buffers move to the main slot */
