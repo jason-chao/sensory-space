@@ -385,7 +385,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       const start = el("div", { class: "start" }, el("div", { class: "card", onclick: (e: Event) => e.stopPropagation() },
         el("h1", {}, "Sensory Space"),
         el("p", { class: "tag" }, "Slow light, living sound, room to linger."),
-        el("div", { class: "hint-row" }, hand, el("p", {}, "Tap or drag the picture. Sound begins when you do, quietly.")),
+        el("div", { class: "hint-row" }, hand, el("p", {}, "Tap or drag to interact with the picture.")),
         el("div", { class: "strip" }, ...tiles.map((t) => t.b)),
         el("p", { class: "more" }, `and ${more} more. Change scene any time with ‹ ›.`),
         el("div", { class: "row" }, el("button", { class: "primary", onclick: () => begin(false, "") }, "Begin")),

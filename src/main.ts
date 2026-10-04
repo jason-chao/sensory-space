@@ -22,7 +22,7 @@ const TOUCH_SOUNDS: Record<string, TouchSound> = {
   flowers: "burst", dots: "split", lava: "thump",
 };
 
-const VERSION = "0.9.1";
+const VERSION = "0.9.2";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "drag", "variation"]);
