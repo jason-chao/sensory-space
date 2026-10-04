@@ -14,8 +14,15 @@ import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
 import { FEATURES } from "./core/features";
 import * as analytics from "./analytics";
+import type { TouchSound } from "./audio/engine";
 
-const VERSION = "0.8.1";
+/** the sound a tap makes, matched to what the scene does with it */
+const TOUCH_SOUNDS: Record<string, TouchSound> = {
+  threads: "pluck", bubbles: "pop", ink: "drop", waves: "drop", ripples: "drop", orb: "drop",
+  flowers: "burst", dots: "split", lava: "thump",
+};
+
+const VERSION = "0.9.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "drag", "variation"]);
@@ -70,7 +77,7 @@ export class App {
     this.store.onChange((key, value) => {
       if (key !== "touch") return;
       const [x, y] = String(value).split(",").map(Number);
-      this.audio.touch(x, y);
+      this.audio.touch(x, y, TOUCH_SOUNDS[this.store.str("scene")] ?? "bell");
     });
     if (!test && analytics.init()) this.bindUsage();
     let saveTimer = 0;

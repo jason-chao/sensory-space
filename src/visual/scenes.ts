@@ -41,40 +41,6 @@ uniform int uTrailN;
 out vec4 outColor;
 float asp;
 vec2 toUv(vec2 p){ return vec2(p.x/asp+.5,p.y+.5); }
-// --- the finger's wake. Scenes use these so that dragging has a physical, predictable effect.
-// how strongly the recent drag touches p (0..1), fading with age
-float wake(vec2 p,float radius){
-  float m=0.;
-  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; float d=length(p-s.xy);
-    m=max(m,exp(-d*d/(radius*radius))*exp(-s.z/1.2)); }
-  return m;
-}
-// displacement that pushes things away from the finger's path and along its direction of travel
-vec2 wakePush(vec2 p,float radius,float strength){
-  vec2 d=vec2(0.);
-  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; vec2 r=p-s.xy; float dist=length(r);
-    float w=exp(-dist*dist/(radius*radius))*exp(-s.z/1.2);
-    d+=(r/max(dist,1e-3))*w*strength+uTrailV[i]*w*strength*.35; }
-  float l=length(d); return l>strength*1.5?d*(strength*1.5/l):d;   // never more than a hand's width
-}
-// pull towards the finger's most recent positions (for things that follow a hand)
-vec2 wakePull(vec2 p,float radius,float strength){
-  vec2 d=vec2(0.);
-  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; vec2 r=s.xy-p; float dist=length(r);
-    float w=exp(-dist*dist/(radius*radius))*exp(-s.z/.8);
-    d+=r*w*strength; }
-  return d;
-}
-// a swirl around the finger's path, turning in the direction it moved (for stirring colour)
-vec2 wakeSwirl(vec2 p,float radius,float strength){
-  for(int i=0;i<24;i++){ if(i>=uTrailN) break; vec4 s=uTrail[i]; vec2 r=p-s.xy; float dist=length(r);
-    float w=exp(-dist*dist/(radius*radius))*exp(-s.z/1.5);
-    vec2 v=uTrailV[i]; float side=sign(v.x*r.y-v.y*r.x+1e-6);
-    float a=w*strength*side*min(1.,s.w);
-    float c=cos(a), sn=sin(a); p=s.xy+mat2(c,-sn,sn,c)*r; }
-  return p;
-}
-
 vec3 pal(float t){ return clamp(uPal[0]+uPal[1]*cos(6.28318*(uPal[2]*t+uPal[3])),0.,1.); }
 float h11(float n){ return fract(sin(n*127.1+3.3)*43758.5453); }
 float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
@@ -82,6 +48,59 @@ vec2 h22(vec2 p){ float n=h21(p); return vec2(n,h21(p+n+17.17)); }
 float vnoise(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
   return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
 float fbm(vec2 p){ float a=.5,s=0.; for(int i=0;i<5;i++){ s+=a*vnoise(p); p=mat2(1.6,1.2,-1.2,1.6)*p; a*=.5; } return s; }
+// --- the finger's wake. The drag is treated as a smooth ribbon (the segments between
+// samples), with a soft core and a soft ceiling, so a fast drag and a slow one leave the same
+// continuous trough and nothing has corners. Scenes use these so dragging feels physical.
+// nearest point on the ribbon to p: returns weight, direction (soft), velocity, summed over segments
+void wakeSum(vec2 p,float radius,out float wsum,out vec2 dir,out vec2 vel,out vec2 pullv){
+  wsum=0.; dir=vec2(0.); vel=vec2(0.); pullv=vec2(0.);
+  if(uTrailN<1) return;
+  int n=max(uTrailN-1,1);
+  for(int i=0;i<23;i++){
+    if(i>=n) break;
+    vec4 a=uTrail[i]; vec4 b=uTrailN>1?uTrail[i+1]:a;
+    vec2 ab=b.xy-a.xy; float u=clamp(dot(p-a.xy,ab)/max(dot(ab,ab),1e-6),0.,1.);
+    vec2 q=a.xy+ab*u; vec2 r=p-q; float d=length(r);
+    float age=mix(a.z,b.z,u);
+    float w=exp(-d*d/(radius*radius))*exp(-age/1.2);
+    wsum+=w;
+    dir+=r/(d+radius*.5)*w;            // soft core: no flip, no cusp at the centre
+    vel+=mix(uTrailV[i],uTrailN>1?uTrailV[i+1]:uTrailV[i],u)*w;
+    pullv+=-r*w*exp(-age/.8);
+  }
+}
+// how strongly the recent drag touches p (0..1), smooth
+float wake(vec2 p,float radius){ float w; vec2 a,b,c; wakeSum(p,radius,w,a,b,c); return 1.-exp(-w); }
+// displacement away from the ribbon and along its direction of travel, capped at a hand's width
+vec2 wakePush(vec2 p,float radius,float strength){
+  float w; vec2 dir,vel,pl; wakeSum(p,radius,w,dir,vel,pl);
+  vec2 d=dir*strength+vel*strength*.35;
+  float l=length(d); return l>strength*1.5?d*(strength*1.5/l):d;
+}
+// pull towards the ribbon (for things that follow a hand)
+vec2 wakePull(vec2 p,float radius,float strength){
+  float w; vec2 dir,vel,pl; wakeSum(p,radius,w,dir,vel,pl);
+  vec2 d=pl*strength; float l=length(d); return l>radius?d*(radius/l):d;
+}
+// a swirl around the ribbon, turning the way the finger moved (for stirring colour)
+vec2 wakeSwirl(vec2 p,float radius,float strength){
+  float w; vec2 dir,vel,pl; wakeSum(p,radius,w,dir,vel,pl);
+  if(w<1e-4) return p;
+  vec2 n=dir/max(length(dir),1e-4);              // away from the ribbon
+  float side=sign(vel.x*n.y-vel.y*n.x+1e-6);
+  float a=(1.-exp(-w))*strength*side*min(1.,length(vel)/max(w,1e-4));
+  float c=cos(a), sn=sin(a);
+  // rotate about the point the ribbon is nearest to, found by stepping back along the direction
+  float dist=length(dir)/max(w,1e-4); vec2 centre=p-n*dist;
+  return centre+mat2(c,-sn,sn,c)*(p-centre);
+}
+// --- taps. Age of the most recent tap within radius of p, or -1. Also gives its position and a hash.
+float tapNear(vec2 p,float radius,out vec2 at,out float hsh){
+  float best=-1.; at=vec2(0.); hsh=0.;
+  for(int k=0;k<8;k++){ float age=uTouch[k].z; if(age<0.) continue;
+    if(length(p-uTouch[k].xy)<radius && (best<0.||age<best)){ best=age; at=uTouch[k].xy; hsh=h21(uTouch[k].xy*37.1); } }
+  return best;
+}
 `;
 
 export const MAIN = /* glsl */ `
@@ -116,7 +135,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "lava", label: "Lava lamp", blurb: "Soft blobs that rise, merge and part",
-    a: { label: "Blob size", def: 0.5 },
+    a: { label: "Blob size", def: 0.5 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   float f=0.;
@@ -128,6 +147,8 @@ vec3 scene(vec2 p,float t){
     float r=(.10+.10*h.y)*(.7+.6*uA);
     f+=w*r*r/(dot(p-c,p-c)+1e-4);
   }
+  for(int k=0;k<8;k++){ if(uTouch[k].z<0.) continue; float age=uTouch[k].z; float dd=length(p-uTouch[k].xy);
+    f-=.05*exp(-dd*dd/.01)*exp(-age/1.5)/(.02+dd*dd); }   // a tap pinches the blob there in two
   float m=smoothstep(.9,1.25,f); float glow=smoothstep(.15,1.,f);
   vec3 bg=pal(.55+.1*p.y)*.09;
   float fc=min(f,3.);
@@ -137,7 +158,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "fireflies", label: "Fireflies", blurb: "Drifting points of light with depth",
-    a: { label: "Glow size", def: 0.4 },
+    a: { label: "Glow size", def: 0.4 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   vec3 c=pal(.6+.15*p.y)*.07*(1.-.5*length(p));
@@ -150,6 +171,8 @@ vec3 scene(vec2 p,float t){
       vec2 pos=o+.5+.38*vec2(sin(t*(.2+.3*h.x)+h.y*6.28),cos(t*(.17+.25*h.y)+h.x*6.28));
       vec2 wp=(id+pos-vec2(t*.02*(fl+1.),fl*10.+uSeed))/sc;   // world position of this firefly
       pos+=wakePush(wp,.28,.11)*sc;                                 // nudged aside by a passing finger
+      for(int k=0;k<8;k++){ if(uTouch[k].z<0.) continue; vec2 away=wp-uTouch[k].xy; float dd=length(away);
+        pos+=away/max(dd,.05)*.22*sin(3.14159*min(uTouch[k].z/5.,1.))*exp(-dd*dd/.12)*sc; }   // a tap scatters them; they drift back
       float d=length(fq-pos);
       float tw=.45+.55*sin(uTime*(.25+.5*h.y)+h.x*40.); tw*=tw;
       float s=.07*(.5+1.2*uA);
@@ -181,7 +204,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "ink", label: "Ink in water", blurb: "Colour unfolding slowly through water",
-    a: { label: "Depth", def: 0.5 },
+    a: { label: "Depth", def: 0.5 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   p=wakeSwirl(p,.28,.7);
@@ -192,12 +215,17 @@ vec3 scene(vec2 p,float t){
   vec3 c=pal(f*.9+.3*length(q)+t*.006);
   c=mix(c,pal(.5+r.x*.6),.5*smoothstep(.2,.8,r.y));
   c*=.2+.9*smoothstep(.1,.8,f*f*2.+.4*q.x);
-  return c*(.55+.6*uA);
+  c*=.55+.6*uA;
+  for(int k=0;k<8;k++){ if(uTouch[k].z<0.) continue; float age=uTouch[k].z;   // a drop of new colour spreads slowly
+    float R=.03+.22*sqrt(age); float d=length(p-uTouch[k].xy)+.06*(f-.5);
+    float drop=smoothstep(R,R-.1,d)*exp(-age/5.);
+    c=mix(c,pal(.5+h21(uTouch[k].xy*31.)*.9)*(1.05+.4*f),drop*.85); }
+  return c;
 }`,
   },
   {
     id: "orb", label: "Breathing orb", blurb: "Grows as you breathe in, settles as you breathe out",
-    a: { label: "Guide ring", def: 0.5 },
+    a: { label: "Guide ring", def: 0.5 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   p+=wakePush(p,.3,.06);
@@ -209,6 +237,8 @@ vec3 scene(vec2 p,float t){
   c+=pal(.15+.25*sw+.1*b)*core*(.5+.35*b);
   c+=pal(.35+.1*b)*halo*.3*(.45+.55*b);
   c+=smoothstep(.005,.0,abs(d-.33))*.14*uA;
+  for(int k=0;k<8;k++){ if(uTouch[k].z<0.) continue; float age=uTouch[k].z; float dd=length(p-uTouch[k].xy);
+    c+=pal(.3+.1*b)*smoothstep(.02,0.,abs(dd-(.04+.25*age)))*exp(-age/2.)*.5; }   // a ring spreads from the touch
   return c;
 }`,
   },
@@ -252,7 +282,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "bubbles", label: "Bubbles", blurb: "Clear bubbles floating upward",
-    a: { label: "Bubble size", def: 0.5 },
+    a: { label: "Bubble size", def: 0.5 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   vec3 c=pal(.6+.12*p.y)*(.13+.07*p.y);
@@ -268,10 +298,17 @@ vec3 scene(vec2 p,float t){
       bc+=wakePush((bc-vec2(fl*3.3+uSeed,0.))/sc,.3,.12)*sc;
       vec2 dv=q-bc;
       float d=length(dv);
+      vec2 tat; float thsh; float tage=tapNear((bc-vec2(fl*3.3+uSeed,0.))/sc,.2,tat,thsh);
+      float fade=smoothstep(.85,.6,abs(yy));
+      if(tage>=0.&&tage<6.){
+        // popped: a ring spreads and fades, then the bubble grows back
+        float ring=smoothstep(.03,0.,abs(d-r*(1.+tage*1.5)))*exp(-tage*1.6);
+        c+=present*fade*pal(h.y*.4+.1)*ring*.6*(1.-.2*fl);
+        r*=smoothstep(3.,6.,tage);
+      }
       float inside=smoothstep(r,r*.92,d);
       float rim=inside*smoothstep(r*.55,r,d);
       float hl=smoothstep(r*.3,0.,length(dv-vec2(-.35,.4)*r));
-      float fade=smoothstep(.85,.6,abs(yy));
       c+=present*fade*(pal(h.y*.4+.1)*(rim*.5+inside*.1)+hl*.3*inside)*(1.-.2*fl);
     }
   }
@@ -322,7 +359,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "threads", label: "Silk threads", blurb: "Glowing lines swaying like slow water plants",
-    a: { label: "Shimmer", def: 0.4 },
+    a: { label: "Shimmer", def: 0.4 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   vec3 c=pal(.65)*.035;
@@ -331,6 +368,10 @@ vec3 scene(vec2 p,float t){
     float h=h11(fi+uSeed);
     float y=(h-.5)*.75+.12*sin(p.x*(1.2+h)+t*(.12+.1*h)+fi)+.07*sin(p.x*2.7-t*.09+fi*2.)+.03*(.3+uA)*sin(p.x*6.+t*.2+fi*5.);
     y+=wakePush(vec2(p.x,y),.28,.14).y;   // lines bend away from a hand like water plants
+    for(int k=0;k<8;k++){ if(uTouch[k].z<0.) continue; float age=uTouch[k].z; vec2 tp=uTouch[k].xy;
+      float y0=(h-.5)*.75+.12*sin(tp.x*(1.2+h)+t*(.12+.1*h)+fi)+.07*sin(tp.x*2.7-t*.09+fi*2.);
+      float near=smoothstep(.09,.02,abs(y0-tp.y));
+      y+=near*.05*sin(age*16.)*exp(-age*1.4)*exp(-(p.x-tp.x)*(p.x-tp.x)/.15); }   // plucked: it vibrates and settles
     float d=abs(p.y-y);
     float g=.0035/(d+.0035)*.55+exp(-d*18.)*.18;
     c+=w*pal(.1*fi+.15*p.x+t*.01)*g*.5;
@@ -426,6 +467,21 @@ vec3 scene(vec2 p,float t){
     vec2 d=q-ctr;
     float k=4.+floor(h2.x*4.);
     float R=(.12+.25*h2.y)*(.5+uA)*smoothstep(0.,.25,ph)*(1.-smoothstep(.58,.66,ph));
+    // a tap bursts the flowers near it: petals fly, then a new bud grows in the same place
+    vec2 tat; float thsh; float tage=tapNear((ctr-uSeed)/sc,.3,tat,thsh);
+    if(tage>=0.&&tage<7.&&R>.001){
+      R*=smoothstep(4.5,7.,tage);
+      float s2=tage/2.5;
+      if(s2<1.){
+        vec2 away=normalize((ctr-uSeed)/sc-tat+vec2(1e-3,0.));
+        for(int i=0;i<6;i++){
+          float fi=float(i); float ang=fi*1.047+h2.x*6.28; vec2 dir=vec2(cos(ang),sin(ang));
+          vec2 pp=ctr+dir*(.1+.7*s2)+away*.5*s2+vec2(0.,.15*s2)+.04*sin(vec2(t*1.3+fi,t*1.1+fi*2.));
+          vec2 e=q-pp; e=mat2(cos(ang),sin(ang),-sin(ang),cos(ang))*e; e.y*=2.2;
+          c+=pal(h2.x*.5+.1)*smoothstep(.07,.03,length(e))*(1.-s2*s2)*.9;
+        }
+      }
+    }
     if(R>.001){
       float f=petal(d,R,k,t*.05*(h.x-.5));
       float inner=smoothstep(R*.35,0.,length(d));
@@ -561,7 +617,7 @@ vec3 scene(vec2 p,float t){
   },
   {
     id: "waves", label: "Rolling waves", blurb: "Slow swells drawn as flowing lines, like a woodblock sea",
-    a: { label: "Swell", def: 0.5 },
+    a: { label: "Swell", def: 0.5 }, ownTouch: true,
     glsl: `
 vec3 scene(vec2 p,float t){
   vec3 c=pal(.62)*.14+.04*fbm(p*2.+vec2(t*.01,0.)+uSeed);   // a pale sky
@@ -573,8 +629,8 @@ vec3 scene(vec2 p,float t){
     float y=.4-.125*fi+(.05+.06*uA)*sw+.02*sin(p.x*4.1-ph*1.3+fi)+.015*(fbm(vec2(p.x*2.+fi*5.,ph*.1))-.5);
     for(int k=0;k<8;k++){
       if(uTouch[k].z<0.) continue;
-      float age=uTouch[k].z; float dist=abs(p.x-uTouch[k].x);
-      y+=.04*sin(dist*9.-age*3.)*exp(-dist*2.5)*exp(-age/2.5)*smoothstep(0.,.3,age);   // a touch sends a ripple along the swell
+      float age=uTouch[k].z; float dist=length(vec2(p.x,y)-uTouch[k].xy);
+      y+=.035*sin(dist*22.-age*4.)*exp(-dist*3.)*exp(-age/2.)*smoothstep(0.,.2,age)*step(dist,age*.5+.05);   // a stone dropped: rings cross the swells
     }
     y+=.06*wake(vec2(p.x,y),.3);   // a hand lifts the swell
     float d=p.y-y;
@@ -615,7 +671,13 @@ vec3 scene(vec2 p,float t){
         float xx=uTouch[k].z*.35-length(wp-uTouch[k].xy);
         if(xx>0.) glow+=smoothstep(0.,.08,xx)*exp(-xx*5.);
       }
-      float disc=smoothstep(r,r*.55,d);
+      vec2 tat; float thsh; float tage=tapNear(wp0,.22,tat,thsh);
+      float disc;
+      if(tage>=0.&&tage<4.){
+        // split: five small dots go out and come back over four seconds
+        float spread=sin(3.14159*tage/4.)*r*1.6; disc=0.;
+        for(int m=0;m<5;m++){ float am=float(m)*1.2566+h.y*6.28; vec2 pm=pos+vec2(cos(am),sin(am))*spread; disc=max(disc,smoothstep(r*.5,r*.25,length(f-pm))); }
+      } else disc=smoothstep(r,r*.55,d);
       c+=present*disc*pal(h.x*.8+.05*fl)*(.45+.4*pulse+.6*glow)*depth;
     }
   }

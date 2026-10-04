@@ -114,6 +114,11 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 
 - Colour wash always textured and lit; the limiter also slows colour change; flash check measures colour
 
+## Done in version 0.9
+
+- The drag wake is a smooth ribbon: no cusps, scalloping or creases
+- Nine scenes answer a tap in their own way, with matching sounds
+
 ## Next
 
 | Priority | Item |

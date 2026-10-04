@@ -368,6 +368,10 @@ Some users reported two colours flashing in the colour wash, and others mistook 
 
 Responses: the colour wash is now always textured (soft clouds at two scales, slow drifting pools of lighter colour, a floor of light), so it reads as a picture at every setting. The brightness limiter now also limits change of colour at constant brightness, measured per region as half the distance between mean colours, at the same rate as brightness; a test that alternates two saturated hues every four frames now changes colour at about a quarter of the former rate. The flash check reports colour steps and fails above twice the nominal rate (the regional method is approximate at region edges). Display guidance for projector settings remains to be written.
 
+## 4j. Corners in the wake, and taps that do something (2026-10-04)
+
+Users saw spikes, sharp edges and straight lines where a drag bent the silk threads and the sea swells. The cause was in the construction: the wake was a row of point sources, each with a direction flip at its centre (a cusp), spaced apart on a fast drag (scalloping), and combined with a maximum (creases). The wake is now the distance to the smooth ribbon between samples, with a soft core and a soft sum, so bends have no corners. Users also asked for taps that act on the thing tapped, naming flowers and dots. Nine scenes now answer a tap in their own nature (flowers burst and regrow; a dot splits into five and regathers; a bubble pops and regrows; fireflies scatter and return; a thread is plucked and settles; a stone drops into the sea; a drop of colour spreads in the ink; a ring spreads from the orb; a blob is pinched in two), and the tap sound matches the scene (pluck, pop, drop, burst, split, thump, bell). Every response fades back to rest within a few seconds, so the picture never accumulates a mess.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.

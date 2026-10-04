@@ -70,7 +70,7 @@ Five scales, including two Japanese pentatonic scales. All sound is synthesised 
 
 ## Touch, and the space answers
 
-Tap or click the picture: a bloom of light opens and a note sounds. Left to right walks up the scale; with the same scale and key, the same place gives the same note.
+Tap or click the picture and the scene answers in its own way. Flowers burst into petals and grow back. A dot splits into five and gathers again. A bubble pops into a ring. Fireflies scatter and wander back. A silk thread is plucked and settles. A stone drops into the sea and rings cross the swells. A drop of new colour spreads through the ink. The sound matches: a pluck, a pop, a water drop, a soft bell. Left to right walks up the scale; with the same scale and key, the same place gives the same note.
 
 Press and drag, and the picture answers your hand in its own nature. Lava follows and stretches until it splits. Fireflies, dots and bubbles part around your path and drift back. Ink, the kaleidoscope and the pool light stir and slowly unwind. Silk threads bend away like water plants. Water of light runs along the drag as a current. Lamps and the lattice light up along the path, flowers scatter, and the swells of the sea rise under your hand.
 

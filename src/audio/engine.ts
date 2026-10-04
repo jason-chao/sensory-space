@@ -13,6 +13,8 @@ export interface VoiceCtx {
   sim: Sim;
 }
 
+export type TouchSound = "bell" | "pluck" | "pop" | "drop" | "burst" | "split" | "thump";
+
 export interface Voice {
   /** called about 20 times a second while the voice is audible */
   update(now: number): void;
@@ -403,12 +405,49 @@ export class AudioEngine {
     }
   }
 
-  /** a touch plays one soft note: left to right walks up the scale, so the same place always sounds the same */
-  touch(x: number, y: number): void {
+  /** A touch plays one soft sound. Left to right walks up the scale, so the same place always
+   *  sounds the same; the kind of sound matches what the scene does with the touch. */
+  touch(x: number, y: number, kind: TouchSound = "bell"): void {
     if (!this.ctx || this.ctx.state !== "running") return;
+    const v = this.vctx, ctx = this.ctx, when = ctx.currentTime + 0.02;
     const n = (SCALES[this.sim.store.str("a.scale")] ?? SCALES.pentaMajor).steps.length;
     const degree = Math.floor(Math.min(0.999, Math.max(0, x)) * n * 2);
-    bell(this.vctx, this.ctx.currentTime + 0.02, this.vctx.freq(degree, y > 0.5 ? 1 : 0), 0.16, 6, x * 1.4 - 0.7);
+    const f = v.freq(degree, y > 0.5 ? 1 : 0), pan = x * 1.4 - 0.7;
+    switch (kind) {
+      case "pluck": pluck(v, when, f, 0.14, pan); break;
+      case "pop": {   // a soft pop: a short filtered noise puff and a quick falling blip
+        const src = ctx.createBufferSource(); src.buffer = v.noise.pink;
+        const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = f * 2; bp.Q.value = 2;
+        const e = ctx.createGain(); e.gain.setValueAtTime(0, when); e.gain.linearRampToValueAtTime(0.25, when + 0.01); e.gain.setTargetAtTime(0, when + 0.01, 0.05);
+        const p = ctx.createStereoPanner(); p.pan.value = pan;
+        src.connect(bp).connect(e).connect(p).connect(v.out); src.start(when, v.rand() * 5); src.stop(when + 0.5);
+        const o = ctx.createOscillator(); o.frequency.setValueAtTime(f * 1.5, when); o.frequency.exponentialRampToValueAtTime(f * 0.8, when + 0.12);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(0.08, when + 0.01); g.gain.setTargetAtTime(0, when + 0.01, 0.06);
+        o.connect(g).connect(p); o.start(when); o.stop(when + 0.5);
+        break;
+      }
+      case "drop": {   // a water drop: a plink that rises slightly, with a soft body
+        const o = ctx.createOscillator(); o.frequency.setValueAtTime(f * 0.9, when); o.frequency.exponentialRampToValueAtTime(f * 1.25, when + 0.15);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(0.14, when + 0.015); g.gain.setTargetAtTime(0, when + 0.015, 0.25);
+        const p = ctx.createStereoPanner(); p.pan.value = pan;
+        o.connect(g).connect(p).connect(v.out); o.start(when); o.stop(when + 2);
+        bell(v, when + 0.02, f * 2, 0.04, 3, pan);
+        break;
+      }
+      case "burst":   // flowers: a small shimmering cluster of three quick bells
+        bell(v, when, f, 0.1, 4, pan); bell(v, when + 0.09, v.freq(degree + 2, y > 0.5 ? 1 : 0), 0.08, 4, pan + 0.1); bell(v, when + 0.18, v.freq(degree + 4, y > 0.5 ? 1 : 0), 0.07, 4, pan - 0.1);
+        break;
+      case "split":   // dots: two quick notes, the second a step up
+        bell(v, when, f, 0.11, 3, pan); bell(v, when + 0.12, v.freq(degree + 1, y > 0.5 ? 1 : 0), 0.09, 3, pan);
+        break;
+      case "thump": {   // lava: a low, soft thump
+        const o = ctx.createOscillator(); o.frequency.setValueAtTime(f * 0.25, when); o.frequency.exponentialRampToValueAtTime(f * 0.18, when + 0.25);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(0.3, when + 0.03); g.gain.setTargetAtTime(0, when + 0.03, 0.18);
+        o.connect(g).connect(v.out); o.start(when); o.stop(when + 1.2);
+        break;
+      }
+      default: bell(v, when, f, 0.16, 6, pan);
+    }
   }
 
   /** fast fade for the stop control, and back */

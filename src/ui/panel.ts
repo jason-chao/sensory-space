@@ -156,7 +156,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     ...MODES.map((m) => el("option", { value: m.id }, m.label)));
   const modeHint = el("p", { class: "hint" });
   syncers.push(() => { modeSel.value = store.str("r.mode"); modeHint.textContent = getMode(store.str("r.mode")).description; });
-  const touchSection = () => section("touch", "Touch", el("p", { class: "hint" }, "Tap or click the picture to make a bloom of light and a note. Left to right walks up the scale; with the same scale and key, the same place gives the same note. Press and drag to move through the picture: lava follows your hand and splits, fireflies and bubbles part around it, ink and colour stir, threads bend, water flows along the path. Each scene answers in its own way."));
+  const touchSection = () => section("touch", "Touch", el("p", { class: "hint" }, "Tap or click the picture and the scene answers in its own way: flowers burst into petals, a dot splits into five and gathers again, a bubble pops, fireflies scatter, a thread is plucked, a stone drops into the sea, a drop of colour spreads through the ink. The sound matches: a pluck, a pop, a drop, a bell. Left to right walks up the scale. Press and drag to move through the picture: lava follows your hand and splits, fireflies and bubbles part around it, colour stirs, threads bend, water flows along the path."));
   const pageInput = el("div", { class: "page" },
     touchSection(),
     section("devices", "Devices", el("div", { class: "rowb" }, bwBtn, demoBtn), status,
