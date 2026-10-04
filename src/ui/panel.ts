@@ -1,7 +1,7 @@
 import { el } from "./dom";
 import { ICONS } from "./icons";
 import type { App } from "../main";
-import { VISIBLE_SCENES, getScene } from "../visual/scenes";
+import { VISIBLE_SCENES, KINDS, getScene } from "../visual/scenes";
 import { PALETTES, paletteCss, getPalette } from "../visual/palettes";
 import { VOICES, SCALES } from "../audio/voicelist";
 import { MODES, getMode } from "../signals/mapping";
@@ -360,26 +360,49 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       toastTimer = window.setTimeout(() => toastEl.classList.remove("show"), 3500);
     },
     showStart(onStart) {
-      const fs = el("input", { type: "checkbox" });
-      let chosen = "";
-      const profBtns = PROFILES.map((p) => el("button", { onclick: () => pick(p.id) }, p.label, el("small", {}, p.blurb)));
-      const pick = (id: string) => { chosen = id; profBtns.forEach((b, i) => b.classList.toggle("on", PROFILES[i].id === id)); };
-      const start = el("div", { class: "start" }, el("div", { class: "card" },
+      // the scene already runs behind this card; only sound and full screen wait for a tap
+      const hand = el("div", { class: "hand" });
+      hand.innerHTML = '<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11m0-3.5a1.5 1.5 0 0 1 3 0V11m0-2a1.5 1.5 0 0 1 3 0v6.5a5.5 5.5 0 0 1-5.5 5.5h-1.2a5.5 5.5 0 0 1-4.6-2.5L4.2 15.3a1.4 1.4 0 0 1 2.2-1.7L9 16.5V11"/><circle class="tapring" cx="7" cy="5" r="2.2"/></svg>';
+      // one scene of each kind, the pick changing once a day on this device
+      let daySeed = 0;
+      try { let dev = Number(localStorage.getItem("sensory.card")); if (!dev) { dev = Math.floor(Math.random() * 1e6); localStorage.setItem("sensory.card", String(dev)); } daySeed = dev + Math.floor(Date.now() / 86400000); } catch { daySeed = Math.floor(Date.now() / 86400000); }
+      const picks = KINDS.map((k, i) => { const of = VISIBLE_SCENES.filter((x) => x.kind === k); return of[(daySeed * 7 + i * 13) % of.length]; });
+      const tiles = picks.map((sc) => {
+        const cv = el("canvas", { width: 96, height: 54 });
+        const b = el("button", { class: "thumb", title: sc.blurb, onclick: (e: Event) => { e.stopPropagation(); store.set("scene", sc.id); begin(false, ""); } }, cv, el("span", {}, sc.label));
+        return { sc, cv, b };
+      });
+      const more = VISIBLE_SCENES.length - picks.length;
+      let done = false;
+      const begin = (fullscreen: boolean, profile: string) => {
+        if (done) return; done = true;
+        if (profile) { const p = PROFILES.find((x) => x.id === profile)!; app.applyQuietly(() => { for (const [k, v] of Object.entries(p.set)) store.set(k, v); }); }
+        start.classList.add("hide");
+        window.setTimeout(() => start.remove(), 900);
+        document.removeEventListener("pointerdown", anyTap, true);
+        onStart(fullscreen, profile);
+      };
+      const start = el("div", { class: "start" }, el("div", { class: "card", onclick: (e: Event) => e.stopPropagation() },
         el("h1", {}, "Sensory Space"),
-        el("p", {}, "Slow light, living sound, room to linger. Everything can be changed, and nothing changes suddenly."),
-        el("div", { class: "note" },
-          "Set the room volume low on your speakers first: sound starts quietly and rises over a few seconds. Light changes are slowed by design. If you are sensitive to light or pattern, choose Gentle. Press ",
-          el("kbd", {}, "E"), " for ease (dimmer, slower, quieter) or ", el("kbd", {}, "X"), " to stop at once (black and silent)."),
-        el("div", { class: "row grid3" }, ...profBtns),
-        el("div", { class: "row" }, el("label", {}, fs, "Open in full screen")),
-        el("div", { class: "row" }, el("button", { class: "primary", onclick: () => {
-          if (chosen) { const p = PROFILES.find((x) => x.id === chosen)!; for (const [k, v] of Object.entries(p.set)) store.set(k, v); }
-          start.classList.add("hide");
-          window.setTimeout(() => start.remove(), 1500);
-          onStart(fs.checked, chosen);
-        } }, "Begin")),
+        el("p", { class: "tag" }, "Slow light, living sound, room to linger."),
+        el("div", { class: "hint-row" }, hand, el("p", {}, "Tap or drag the picture. Sound begins when you do, quietly.")),
+        el("div", { class: "strip" }, ...tiles.map((t) => t.b)),
+        el("p", { class: "more" }, `and ${more} more. Change scene any time with ‹ ›.`),
+        el("div", { class: "row" }, el("button", { class: "primary", onclick: () => begin(false, "") }, "Begin")),
       ));
+      // a tap anywhere outside the card also begins; on the picture it is the first bloom and note
+      const anyTap = (e: Event) => { if (!(e.target as HTMLElement).closest(".card") && !(e.target as HTMLElement).closest(".bar, .panel, .handle")) begin(false, ""); };
+      document.addEventListener("pointerdown", anyTap, true);
       root.append(start);
+      // thumbnails fill in as they render, so the card never waits on them
+      let i = 0;
+      const next = () => {
+        if (i >= tiles.length || done) return;
+        const t = tiles[i++]; const img = app.engine.renderThumb(t.sc.id, 96, 54);
+        if (img) t.cv.getContext("2d")!.putImageData(img, 0, 0);
+        requestAnimationFrame(next);
+      };
+      requestAnimationFrame(next);
     },
   };
 }

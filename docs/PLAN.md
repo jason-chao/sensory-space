@@ -119,6 +119,11 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - The drag wake is a smooth ribbon: no cusps, scalloping or creases
 - Nine scenes answer a tap in their own way, with matching sounds
 
+## Done in version 0.9.1
+
+- Opening: the scene runs in view, any tap begins, a hand hint and a daily row of eight scene thumbnails, one per kind
+- Scenes, palettes and soundscapes ordered to alternate character
+
 ## Next
 
 | Priority | Item |

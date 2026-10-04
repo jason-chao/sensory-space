@@ -20,7 +20,7 @@ Twenty-one scenes explore colour and pattern, accompanied by synthesised soundsc
 
 ## Step inside
 
-Open **[sensory-space.org](https://sensory-space.org)** and press **Begin**. Sound starts then, so set your volume low first. Full screen is optional. Touch, drag, or simply watch and listen.
+Open **[sensory-space.org](https://sensory-space.org)**. The first scene is already moving; tap the picture, or a scene from the row on the card, and sound begins quietly. Set your volume low first. Full screen is on the bar. Touch, drag, or simply watch and listen.
 
 Choose **Gentle** for dimmer, slower scenes. **Ease** softens everything at once; **Stop** takes it to black and silence. It is free, there is no account, and once loaded it works without a connection. The light and sound are generated in your browser, and your settings stay on your device.
 

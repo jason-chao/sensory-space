@@ -22,7 +22,7 @@ const TOUCH_SOUNDS: Record<string, TouchSound> = {
   flowers: "burst", dots: "split", lava: "thump",
 };
 
-const VERSION = "0.9.0";
+const VERSION = "0.9.1";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "drag", "variation"]);
@@ -174,8 +174,10 @@ export class App {
     this.ui = buildUi(this, root);
     this.bindInput();
     if (this.test) return;
+    document.body.classList.add("pre");   // before the first tap: picture only, no bar
     this.ui.showStart((fullscreen, profile) => {
       this.started = true;
+      document.body.classList.remove("pre");
       this.usageBegin(fullscreen, profile);
       void this.audio.start();
       if (fullscreen) this.toggleFullscreen();
@@ -273,7 +275,7 @@ export class App {
     });
     const stage = document.getElementById("stage")!;
     stage.addEventListener("pointerdown", (e) => {
-      if (!this.started || this.stopped || this.player.active) return;
+      if (this.stopped || this.player.active) return;
       if (this.panelEl?.classList.contains("open")) { this.panelEl.classList.remove("open"); return; }
       const now = performance.now();
       if (now - this.lastTouch < 180) return;

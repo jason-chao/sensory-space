@@ -67,13 +67,13 @@ export interface Soundscape {
 
 export const SOUNDSCAPES: Soundscape[] = [
   { id: "shore", label: "Shore at dusk", blurb: "ocean, warm drone, a few chimes", scale: "pentaMinor", layers: { ocean: 0.5, drone: 0.4, chimes: 0.2 } },
-  { id: "garden", label: "Night garden", blurb: "wind, chimes, quiet drone, a bowl now and then", scale: "yo", layers: { wind: 0.35, chimes: 0.4, drone: 0.3, bowls: 0.15 } },
-  { id: "rain", label: "Rainy window", blurb: "rain, warm drone", scale: "pentaMajor", layers: { rain: 0.5, drone: 0.35 } },
   { id: "temple", label: "Temple bells", blurb: "singing bowls, plucked strings, low drone", scale: "insen", layers: { bowls: 0.5, koto: 0.35, drone: 0.25 } },
-  { id: "stream", label: "Mountain stream", blurb: "stream, light wind, chimes", scale: "lydian", layers: { stream: 0.5, wind: 0.2, chimes: 0.3 } },
+  { id: "garden", label: "Night garden", blurb: "wind, chimes, quiet drone, a bowl now and then", scale: "yo", layers: { wind: 0.35, chimes: 0.4, drone: 0.3, bowls: 0.15 } },
   { id: "hush", label: "Deep hush", blurb: "brown noise, low drone, slow pulse", scale: "pentaMinor", layers: { noise: 0.45, drone: 0.3, pulse: 0.2 } },
-  { id: "breathing", label: "Breathing", blurb: "breath sound at the breathing pace, soft drone, bowls", scale: "pentaMajor", layers: { breath: 0.5, drone: 0.35, bowls: 0.2 } },
+  { id: "stream", label: "Mountain stream", blurb: "stream, light wind, chimes", scale: "lydian", layers: { stream: 0.5, wind: 0.2, chimes: 0.3 } },
   { id: "chimes", label: "Chimes alone", blurb: "sparse chimes, nothing else", scale: "pentaMajor", layers: { chimes: 0.5 } },
+  { id: "rain", label: "Rainy window", blurb: "rain, warm drone", scale: "pentaMajor", layers: { rain: 0.5, drone: 0.35 } },
+  { id: "breathing", label: "Breathing", blurb: "breath sound at the breathing pace, soft drone, bowls", scale: "pentaMajor", layers: { breath: 0.5, drone: 0.35, bowls: 0.2 } },
 ];
 
 /** Intensity profiles. Even "Vivid" stays inside the safety layer. */
