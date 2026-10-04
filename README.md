@@ -141,7 +141,7 @@ The container serves the app over http and https with a self-signed certificate;
 docker exec sensory-space cat /data/caddy/pki/authorities/local/root.crt > sensory-space-root.crt
 ```
 
-For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH` for a sub-path). The public site is deployed with `npm run deploy:pages`.
+For plain static hosting, publish `dist/` after `npm run build` (set `BASE_PATH` for a sub-path). The public site is deployed by the GitHub workflow on every push to `main`, after type checks, unit tests and a build; the flash and loudness checks run alongside and are reported. `npm run deploy:pages` is the manual fallback.
 
 Checks:
 

@@ -124,6 +124,10 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 - Opening: the scene runs in view, any tap begins, a hand hint and a daily row of eight scene thumbnails, one per kind
 - Scenes, palettes and soundscapes ordered to alternate character
 
+## Done in version 0.9.3
+
+- GitHub workflow: checks on every push and pull request, deploy of main to sensory-space.org; flash and loudness checks reported alongside
+
 ## Next
 
 | Priority | Item |

@@ -1,0 +1,101 @@
+# Checks every change; deploys main to the public site (sensory-space.org) on Cloudflare Pages.
+#
+# Safeguards for a public repository:
+# - Pull requests run checks only, on the `pull_request` trigger, which gives no secrets to forks.
+#   `pull_request_target` is deliberately not used.
+# - The deploy job runs only for pushes to main in this repository, never for pull requests.
+# - Every job starts with read-only repository permissions.
+# - Third-party actions are pinned to full commit hashes, not movable tags.
+# - The Cloudflare token is limited to "Cloudflare Pages: Edit" on one account.
+name: check and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # the public build: Input feature off, usage counting attached only on the public host names
+  VITE_FEATURE_INPUT: "0"
+  BASE_PATH: /
+
+jobs:
+  check:
+    name: types, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - name: build the public version
+        env:
+          VITE_ANALYTICS_SRC: ${{ vars.ANALYTICS_SRC }}
+          VITE_ANALYTICS_ID: ${{ vars.ANALYTICS_ID }}
+        run: npx vite build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  safety:
+    # photosensitivity and loudness checks on the real renderer; reported, not blocking
+    name: flash and loudness checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx vite build
+      - name: serve the build
+        run: |
+          npx vite preview --port 4173 --strictPort > preview.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:4173/ >/dev/null && exit 0; sleep 1; done
+          cat preview.log; exit 1
+      - run: npm run flashcheck
+      - run: node scripts/audiocheck.mjs
+
+  deploy:
+    name: deploy to sensory-space.org
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'jason-chao/sensory_space'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://sensory-space.org
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: pages deploy dist --project-name sensory-space --branch main --commit-hash ${{ github.sha }} --commit-message "${{ github.sha }}"
