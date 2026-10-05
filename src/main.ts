@@ -1,7 +1,7 @@
 import "./ui/style.css";
 import { Store, type Value } from "./core/store";
 import { defineParams, PROFILES, SOUNDSCAPES } from "./core/params";
-import { VOICES } from "./audio/voicelist";
+import { LAYERS, SoundEngine, type TouchSound } from "sensory-sound";
 import { Sim, STEP } from "./core/sim";
 import { newSeed } from "./core/prng";
 import { SignalBus } from "./signals/bus";
@@ -9,12 +9,10 @@ import { EegBridgeSource, DemoSource, defaultBridgeUrl, type SignalSource } from
 import { VisualEngine } from "./visual/engine";
 import { VISIBLE_SCENES } from "./visual/scenes";
 import { PALETTES } from "./visual/palettes";
-import { AudioEngine } from "./audio/engine";
 import { Recorder, Player, parseSession, downloadJson } from "./record/session";
 import { buildUi, type Ui } from "./ui/panel";
 import { FEATURES } from "./core/features";
 import * as analytics from "./analytics";
-import type { TouchSound } from "./audio/engine";
 
 /** the sound a tap makes, matched to what the scene does with it */
 const TOUCH_SOUNDS: Record<string, TouchSound> = {
@@ -22,7 +20,7 @@ const TOUCH_SOUNDS: Record<string, TouchSound> = {
   flowers: "burst", dots: "split", lava: "thump",
 };
 
-const VERSION = "0.9.3";
+const VERSION = "0.10.0";
 const LS_STATE = "sensory.state", LS_PRESETS = "sensory.presets", LS_URL = "sensory.bridgeUrl";
 /** never restored from storage: a session always starts un-calmed, un-muted, same seed rules */
 const TRANSIENT = new Set(["ease", "a.mute", "freeze", "v.blank", "touch", "drag", "variation"]);
@@ -37,7 +35,7 @@ export class App {
   bus = new SignalBus();
   sim: Sim;
   engine!: VisualEngine;
-  audio: AudioEngine;
+  audio: SoundEngine;
   recorder: Recorder;
   player: Player;
   sources: { eeg: EegBridgeSource; demo: DemoSource };
@@ -69,7 +67,8 @@ export class App {
     if (!test) this.store.load(ls.get<Record<string, Value>>(LS_STATE, {}), "system", (k) => TRANSIENT.has(k));
     if (!test && !localStorage.getItem(LS_STATE) && matchMedia("(prefers-reduced-motion: reduce)").matches) this.store.set("v.speed", 0.25, "system");
     this.sim.reset(test ? 12345 : newSeed());
-    this.audio = new AudioEngine(this.sim);
+    this.audio = new SoundEngine({ seed: this.sim.seed });
+    window.setInterval(() => this.feedSound(), 50);
     this.recorder = new Recorder(this.store, this.sim, this.bus, VERSION);
     this.recorder.includeSignals = FEATURES.input;
     this.player = new Player(this.store, this.sim, this.bus);
@@ -157,6 +156,16 @@ export class App {
       screen_w: screen.width, screen_h: screen.height, pixel_ratio: Math.round(devicePixelRatio * 100) / 100, screen_class: analytics.screenClass(screen.width * devicePixelRatio),
       language: navigator.language, returning: !!localStorage.getItem("sensory.state"),
     });
+  }
+
+  /** the sound engine follows the simulation's smoothed values */
+  private feedSound(): void {
+    const sim = this.sim, store = this.store;
+    this.audio.set({
+      volume: sim.v("a.volume"), soften: sim.v("a.soften"), reverb: sim.v("a.reverb"), tone: sim.v("a.tone"), activity: sim.v("a.activity"),
+      pulseRate: sim.v("a.pulseRate"), breath: sim.breath, root: store.num("a.root"), scale: store.str("a.scale"), mute: store.bool("a.mute"),
+    });
+    for (const l of LAYERS) this.audio.setLayer(l.id, sim.v(`a.voice.${l.id}`));
   }
 
   mount(): void {
@@ -419,7 +428,7 @@ export class App {
   /** which soundscape the layer levels currently match, if any */
   currentSoundscape(): string | null {
     for (const sc of SOUNDSCAPES) {
-      const ok = VOICES.every((v) => Math.abs(this.store.num(`a.voice.${v.id}`) - (sc.layers[v.id] ?? 0)) < 0.005);
+      const ok = LAYERS.every((l) => Math.abs(this.store.num(`a.voice.${l.id}`) - (sc.layers[l.id] ?? 0)) < 0.005);
       if (ok && this.store.str("a.scale") === sc.scale) return sc.id;
     }
     return null;
@@ -429,7 +438,7 @@ export class App {
     if (!sc) return;
     if (this.via !== "bar" && this.via !== "key") analytics.track("soundscape", { soundscape: id, via: "panel", from_custom: this.currentSoundscape() === null });
     this.quiet = true;
-    for (const v of VOICES) this.store.set(`a.voice.${v.id}`, sc.layers[v.id] ?? 0);
+    for (const l of LAYERS) this.store.set(`a.voice.${l.id}`, sc.layers[l.id] ?? 0);
     this.store.set("a.scale", sc.scale);
     this.quiet = false;
   }

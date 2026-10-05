@@ -1,6 +1,9 @@
 import type { Store } from "./store";
 import { SCENES } from "../visual/scenes";
-import { VOICES } from "../audio/voicelist";
+import { LAYERS, SOUNDSCAPES } from "sensory-sound";
+
+/** the soundscapes, in the package's order; re-exported so the interface has one source */
+export { SOUNDSCAPES };
 
 /** Declares every adjustable value. tau is the time constant with which the
  *  engine follows a change: nothing a person or a signal does can jump. */
@@ -25,7 +28,8 @@ export function defineParams(store: Store): void {
   d({ key: "a.activity", label: "Activity", min: 0, max: 1, def: 0.4, tau: 3, reactive: true });
   d({ key: "a.pulseRate", label: "Pulse per minute", min: 40, max: 90, def: 58, step: 1, tau: 5, reactive: true });
   d({ key: "a.root", label: "Key", min: 0, max: 11, def: 2, step: 1, tau: 0.01 });
-  for (const v of VOICES) d({ key: `a.voice.${v.id}`, label: v.label, min: 0, max: 1, def: v.def, tau: 1.2 });
+  // layer levels start as the first soundscape, so the panel does not open on "Custom"
+  for (const l of LAYERS) d({ key: `a.voice.${l.id}`, label: l.label, min: 0, max: 1, def: SOUNDSCAPES[0].layers[l.id] ?? 0, tau: 1.2 });
 
   d({ key: "r.influence", label: "Influence", min: 0, max: 1, def: 0.35, tau: 2 });
   // change over time: off by default; when on, always through slow cross-fades
@@ -54,27 +58,6 @@ export interface Profile {
   blurb: string;
   set: Record<string, number>;
 }
-
-/** Named soundscapes: a set of layer levels plus a scale. Everything else is left as it is. */
-export interface Soundscape {
-  id: string;
-  label: string;
-  /** factual description of what plays */
-  blurb: string;
-  scale: string;
-  layers: Record<string, number>;
-}
-
-export const SOUNDSCAPES: Soundscape[] = [
-  { id: "shore", label: "Shore at dusk", blurb: "ocean, warm drone, a few chimes", scale: "pentaMinor", layers: { ocean: 0.5, drone: 0.4, chimes: 0.2 } },
-  { id: "temple", label: "Temple bells", blurb: "singing bowls, plucked strings, low drone", scale: "insen", layers: { bowls: 0.5, koto: 0.35, drone: 0.25 } },
-  { id: "garden", label: "Night garden", blurb: "wind, chimes, quiet drone, a bowl now and then", scale: "yo", layers: { wind: 0.35, chimes: 0.4, drone: 0.3, bowls: 0.15 } },
-  { id: "hush", label: "Deep hush", blurb: "brown noise, low drone, slow pulse", scale: "pentaMinor", layers: { noise: 0.45, drone: 0.3, pulse: 0.2 } },
-  { id: "stream", label: "Mountain stream", blurb: "stream, light wind, chimes", scale: "lydian", layers: { stream: 0.5, wind: 0.2, chimes: 0.3 } },
-  { id: "chimes", label: "Chimes alone", blurb: "sparse chimes, nothing else", scale: "pentaMajor", layers: { chimes: 0.5 } },
-  { id: "rain", label: "Rainy window", blurb: "rain, warm drone", scale: "pentaMajor", layers: { rain: 0.5, drone: 0.35 } },
-  { id: "breathing", label: "Breathing", blurb: "breath sound at the breathing pace, soft drone, bowls", scale: "pentaMajor", layers: { breath: 0.5, drone: 0.35, bowls: 0.2 } },
-];
 
 /** Intensity profiles. Even "Vivid" stays inside the safety layer. */
 export const PROFILES: Profile[] = [

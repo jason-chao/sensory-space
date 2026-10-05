@@ -3,7 +3,7 @@ import { ICONS } from "./icons";
 import type { App } from "../main";
 import { VISIBLE_SCENES, KINDS, getScene } from "../visual/scenes";
 import { PALETTES, paletteCss, getPalette } from "../visual/palettes";
-import { VOICES, SCALES } from "../audio/voicelist";
+import { LAYERS, SCALES } from "sensory-sound";
 import { MODES, getMode } from "../signals/mapping";
 import { PROFILES, SOUNDSCAPES } from "../core/params";
 import { FEATURES } from "../core/features";
@@ -128,7 +128,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     section("scapes", "Soundscapes", scapeGrid, scapeState),
     section("volume", "Volume", slider("a.volume"), el("div", { class: "rowb" }, toggle("a.mute", "Muted (press for sound)", "Mute")), slider("a.soften"),
       el("p", { class: "hint" }, "All sound is generated live. Set the room volume on the speakers first; this volume is relative to that.")),
-    section("layers", "Layers", ...VOICES.map((v) => slider(`a.voice.${v.id}`, (x) => (x < 0.01 ? "off" : pct(`a.voice.${v.id}`, x))))),
+    section("layers", "Layers", ...LAYERS.map((l) => slider(`a.voice.${l.id}`, (x) => (x < 0.01 ? "off" : pct(`a.voice.${l.id}`, x))))),
     section("fine", "Fine control",
       el("div", { class: "slider" }, el("label", {}, "Mood (scale)"), scaleSel),
       slider("a.root", (v) => NOTES[Math.round(v)]), slider("a.tone"), slider("a.activity"), slider("a.reverb"), slider("a.pulseRate", (v) => String(Math.round(v)))),
