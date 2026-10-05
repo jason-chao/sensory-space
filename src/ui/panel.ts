@@ -161,7 +161,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     touchSection(),
     section("devices", "Devices", el("div", { class: "rowb" }, bwBtn, demoBtn), status,
       el("details", {}, el("summary", { class: "hint" }, "Bridge address"), urlInput,
-        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of an EEG bridge that speaks the ", el("a", { href: "https://github.com/jason-chao/sensory_space/blob/main/docs/EEG-BRIDGE-PROTOCOL.md", target: "_blank", rel: "noopener" }, "Sensory Space bridge protocol"), "."))),
+        el("p", { class: "hint" }, "Leave as it is when this page is served together with a bridge. Otherwise enter the WebSocket address of an EEG bridge that speaks the ", el("a", { href: "https://github.com/jason-chao/sensory-space/blob/main/docs/EEG-BRIDGE-PROTOCOL.md", target: "_blank", rel: "noopener" }, "Sensory Space bridge protocol"), "."))),
     section("signals", "Signals", meters),
     section("mode", "How signals shape the space", modeSel, modeHint, slider("r.influence"),
       el("p", { class: "hint" }, "Signals are an influence, not a score. There is nothing to achieve. With a weak or missing signal the space simply carries on. Sensory Space does not send or store signal data unless you record a session with signals included. The bridge that supplies the signals is a separate system and may keep its own records.")),
@@ -227,7 +227,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
     return p;
   };
   const ghLink = () => {
-    const a = el("a", { class: "ghlink", href: "https://github.com/jason-chao/sensory_space", target: "_blank", rel: "noopener", "aria-label": "Sensory Space on GitHub", title: "Source code on GitHub" });
+    const a = el("a", { class: "ghlink", href: "https://github.com/jason-chao/sensory-space", target: "_blank", rel: "noopener", "aria-label": "Sensory Space on GitHub", title: "Source code on GitHub" });
     a.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>';
     a.append(el("span", {}, "Source on GitHub"));
     return a;

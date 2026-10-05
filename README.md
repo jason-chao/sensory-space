@@ -85,8 +85,8 @@ The research and the feedback behind each design decision are in [docs/RESEARCH.
 You need Node.js 20.19 or later.
 
 ```bash
-git clone https://github.com/jason-chao/sensory_space.git
-cd sensory_space
+git clone https://github.com/jason-chao/sensory-space.git
+cd sensory-space
 npm install
 npm run dev
 ```

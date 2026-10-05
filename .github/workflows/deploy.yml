@@ -83,7 +83,7 @@ jobs:
   deploy:
     name: deploy to sensory-space.org
     needs: check
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'jason-chao/sensory_space'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'jason-chao/sensory-space'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
