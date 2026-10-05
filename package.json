@@ -1,6 +1,6 @@
 {
   "name": "sensory-space",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -20,6 +20,6 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "sensory-sound": "https://github.com/jason-chao/sensory-sound/releases/download/v0.1.0/sensory-sound-0.1.0.tgz"
+    "sensory-sound": "https://github.com/jason-chao/sensory-sound/releases/download/v0.1.1/sensory-sound-0.1.1.tgz"
   }
 }
