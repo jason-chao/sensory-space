@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   const upstream = env.EEG_BRIDGE_UPSTREAM;
   return {
     base: env.BASE_PATH || "./",
+    build: { rollupOptions: { input: { main: "index.html", sound: "sound/index.html" } } },
     server: {
       proxy: upstream
         ? { "/bridge/eeg": { target: upstream, ws: true, changeOrigin: true, rewrite: (p) => p.replace(/^\/bridge\/eeg/, "") } }
@@ -18,8 +19,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["icon.svg"],
-        workbox: { navigateFallbackDenylist: [/^\/bridge\//] },
+        includeAssets: ["icon.svg", "icon-192.png", "icon-512.png", "sound.webmanifest"],
+        workbox: { navigateFallbackDenylist: [/^\/bridge\//, /^\/sound/] },
         manifest: {
           name: "Sensory Space", short_name: "Sensory Space", description: "A calm space of slow light and sound.",
           display: "fullscreen", background_color: "#05070d", theme_color: "#05070d",

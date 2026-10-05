@@ -56,7 +56,9 @@ Each scene answers a touch in its own way. Bubbles pop and grow back, silk threa
 
 The sound is synthesised as you listen, so it keeps changing. You can choose from soundscapes such as Shore at dusk, Temple bells and Rainy window, or mix the eleven layers yourself in Settings.
 
-It comes from [sensory-sound](https://github.com/jason-chao/sensory-sound), a small sound engine I wrote alongside this project. You can use it in your own work.
+If you only want the sound, for a phone by the bed or a quiet room, [sensory-space.org/sound](https://sensory-space.org/sound/) plays it on its own, with the soundscapes, a sleep timer, and play and pause on the lock screen.
+
+The sound comes from [sensory-sound](https://github.com/jason-chao/sensory-sound), a small sound engine I wrote alongside this project. You can use it in your own work.
 
 ## Keys
 

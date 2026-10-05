@@ -376,6 +376,12 @@ Users saw spikes, sharp edges and straight lines where a drag bent the silk thre
 
 Users found the opening uninviting: a dark, blurred card demanded a choice and a press of Begin before anything could be seen, although the only thing that truly needs a tap is sound (browsers will not start audio or full screen without one). Now the first scene runs in full view behind a compact card; any tap anywhere begins, and a tap on the picture is also the first bloom and note. The card carries a hand symbol with a gentle tap motion and "Tap or drag the picture. Sound begins when you do, quietly.", a row of eight thumbnails, one for each kind of response to touch, with the pick within each kind changing once a day per device (the order of kinds is fixed so the row keeps its shape), and a single Begin. Two extra links (full screen, gentle start) were tried and removed as confusing; both are one tap away afterwards. The scene list, the palettes and the soundscapes are now ordered so that stepping with the arrows changes character every time, with the defaults first.
 
+## 4l. The sound on its own (2026-10-06)
+
+Users who found the sound comfortable asked to play it on a phone without opening the space. The sound engine was first moved into its own library, sensory-sound, so that the space, a sound-only page and any future use share one engine, with the space pinned to an exact release. The page at /sound offers the soundscapes, volume, soften and a sleep timer, and sends the sound through a media element with the Media Session interface, which is what lets a phone keep playing with the screen off and show play and pause on the lock screen. The engine schedules notes two seconds ahead there, because browsers slow a background page's timers. This is verified in a desktop browser; behaviour with the screen locked is to be checked on real phones, and iPhones in particular are known to be stricter about background sound.
+
+While matching the page's soundscapes, measurement showed the eight soundscapes had spanned 17 dB in loudness; the library now calibrates each layer and the soundscapes sit within 0.2 dB of each other.
+
 ## 5. What is not yet known or not yet done
 
 1. **Only one informal round of user feedback has happened** (section 4b). Structured sessions should ask about enjoyment, sense of control and willingness to return, not about reduced behaviours.

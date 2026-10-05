@@ -128,6 +128,11 @@ settings (store) -> simulation (fixed step, seeded, smooth following, calm)
 
 - GitHub workflow: checks on every push and pull request, deploy of main to sensory-space.org; flash and loudness checks reported alongside
 
+## Done in version 0.11
+
+- The sound on its own at /sound: soundscapes, volume, soften, sleep timer, lock-screen controls, installable
+- The sound engine extracted to the sensory-sound library (0.10)
+
 ## Next
 
 | Priority | Item |

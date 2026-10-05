@@ -127,7 +127,8 @@ export function buildUi(app: App, root: HTMLElement): Ui {
   const pageSound = el("div", { class: "page" },
     section("scapes", "Soundscapes", scapeGrid, scapeState),
     section("volume", "Volume", slider("a.volume"), el("div", { class: "rowb" }, toggle("a.mute", "Muted (press for sound)", "Mute")), slider("a.soften"),
-      el("p", { class: "hint" }, "All sound is generated live. Set the room volume on the speakers first; this volume is relative to that.")),
+      el("p", { class: "hint" }, "All sound is generated live. Set the room volume on the speakers first; this volume is relative to that."),
+      el("p", { class: "hint" }, "Just the sound, on a phone: ", el("a", { href: "/sound/" }, "sensory-space.org/sound"))),
     section("layers", "Layers", ...LAYERS.map((l) => slider(`a.voice.${l.id}`, (x) => (x < 0.01 ? "off" : pct(`a.voice.${l.id}`, x))))),
     section("fine", "Fine control",
       el("div", { class: "slider" }, el("label", {}, "Mood (scale)"), scaleSel),
@@ -243,7 +244,7 @@ export function buildUi(app: App, root: HTMLElement): Ui {
       el("p", {}, el("strong", {}, "Sensory Space"), " ", el("span", { class: "hint" }, `version ${app.version}`)),
       el("p", { class: "hint" }, "Slow light, living sound, room to linger. A generative art project of light and sound for any screen, from a projected wall to a laptop. Everything is generated live in this browser."),
       el("p", { class: "hint" }, "By Jason Chao. Designed with care for autistic adults: nothing changes suddenly, and the pace, brightness and sound are yours to set. Brightness changes are rate-limited by design, which lowers risk but cannot remove it; if you are sensitive to light or pattern, start with Gentle."),
-      el("p", { class: "hint" }, ghLink(), " · MIT licence"),
+      el("p", { class: "hint" }, ghLink(), " · MIT licence · ", el("a", { href: "/sound/" }, "the sound on its own")),
       usageNote()),
   );
 
